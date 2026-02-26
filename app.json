@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "I-TOY-CLEAN",
-    "slug": "I-TOY-CLEAN",
+    "name": "I-TOY",
+    "slug": "I-TOY",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

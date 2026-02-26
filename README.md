@@ -48,3 +48,14 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+
+# Expo 自動幫你把所有套件（包括 react-native, reanimated 等）對齊到的官方推薦版本：
+npx expo install --check
+
+# 啟動指令
+npm install
+npx expo start --tunnel --clear
+
+# NPM Download
+https://nodejs.org/
