@@ -126,7 +126,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1], 'clamp') }]
   }));
   const xButtonProps = useAnimatedProps(() => ({
-    fill: interpolateColor(swipeX.value, [-150, 0], ['rgba(255, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.55)'])
+    fill: interpolateColor(swipeX.value, [-150, 0], ['rgb(255, 0, 0)', 'rgba(12, 12, 12, 0.55)'])
   }));
 
   // --- 愛心按鈕的動畫設定 ---
@@ -134,7 +134,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     transform: [{ scale: interpolate(swipeX.value, [0, 150], [1, 1.5], 'clamp') }]
   }));
   const heartButtonProps = useAnimatedProps(() => ({
-    fill: interpolateColor(swipeX.value, [0, 150], ['rgba(0, 0, 0, 0.55)', 'rgba(234, 128, 252, 0.9)'])
+    fill: interpolateColor(swipeX.value, [0, 150], ['rgba(12, 12, 12, 0.55)', 'rgb(234, 128, 252)'])
   }));
 
   const fetchData = async () => {
@@ -287,18 +287,18 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 }
 
 const styles = StyleSheet.create({
-  screenContainer: { flex: 1, backgroundColor: '#121212' },
+  screenContainer: { flex: 1, backgroundColor: 'rgb(18, 18, 18)' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   swiperContainer: { flex: 1, zIndex: 1 },
   swiperRoot: { backgroundColor: 'transparent' },
   card: { width: width, height: height, backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
-  cardImage: { flex: 1, width: '100%', height: '100%', resizeMode: 'cover' },
-  topGlassTag: { position: 'absolute', top: height * 0.15, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(0, 0, 0, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden' },
-  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: Math.max(11, width * 0.033) },
-  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.18, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.18, left: width * 0.12, zIndex: 20 },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.18, right: width * 0.12, zIndex: 20 },
-  buyNowGlassButton: { backgroundColor: 'rgba(0, 0, 0, 0.25)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09, overflow: 'hidden' },
+  cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden' },
+  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20 },
+  buyNowGlassButton: { backgroundColor: 'rgba(12, 12, 12, 0.25)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09, overflow: 'hidden' },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '600' },
   svgContainer: { position: 'absolute' },
   iconOverlay: { width: buttonSize, height: buttonSize, justifyContent: 'center', alignItems: 'center' },
