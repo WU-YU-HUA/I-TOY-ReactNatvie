@@ -26,9 +26,9 @@ const PADDING = width * 0.01;
 const TAB_WIDTH = (NAV_WIDTH - (PADDING * 2)) / 3; 
 
 const TABS = [
-  { id: 'Discover', activeIcon: 'search', inactiveIcon: 'search' },
-  { id: 'Saved', activeIcon: 'heart-outline', inactiveIcon: 'heart-outline' },
-  { id: 'Category', activeIcon: 'grid-outline', inactiveIcon: 'grid-outline' }
+  { id: 'Discover', label: '探索',activeIcon: 'search', inactiveIcon: 'search' },
+  { id: 'Saved', label: '最愛', activeIcon: 'heart-outline', inactiveIcon: 'heart-outline' },
+  { id: 'Category', label: '分類', activeIcon: 'grid-outline', inactiveIcon: 'grid-outline' }
 ];
 
 export default function App() {
@@ -187,7 +187,7 @@ export default function App() {
                 <TouchableOpacity key={tab.id} style={styles.navItem} onPress={() => handleTabPress(tab.id, index)} activeOpacity={1}>
                   <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
                     <Ionicons name={isActive ? tab.activeIcon : tab.inactiveIcon} size={width * 0.055} color={isActive ? '#EA80FC' : '#FFFFFF'} />
-                    <Text style={[styles.navText, isActive && styles.activeNavText]}>{tab.id}</Text>
+                    <Text style={[styles.navText, isActive && styles.activeNavText]}>{tab.label}</Text>
                   </Animated.View>
                 </TouchableOpacity>
               );
