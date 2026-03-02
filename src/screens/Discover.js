@@ -123,7 +123,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   // --- X 按鈕的動畫設定 ---
   const xButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1], 'clamp') }]
+    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.3], 'clamp') }]
   }));
   const xButtonProps = useAnimatedProps(() => ({
     fill: interpolateColor(swipeX.value, [-150, 0], ['rgb(255, 0, 0)', 'rgba(12, 12, 12, 0.55)'])
@@ -131,7 +131,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   // --- 愛心按鈕的動畫設定 ---
   const heartButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1, 1.5], 'clamp') }]
+    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.3, 1.5], 'clamp') }]
   }));
   const heartButtonProps = useAnimatedProps(() => ({
     fill: interpolateColor(swipeX.value, [0, 150], ['rgba(12, 12, 12, 0.55)', 'rgb(234, 128, 252)'])
