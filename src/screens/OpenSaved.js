@@ -8,7 +8,8 @@ import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, wit
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13); 
 
-const ZoomableCard = ({ card, setIsZooming, screenAnim }) => {
+// 🌟 接收 isZoomingAnim 參數
+const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -16,12 +17,16 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim }) => {
   const springConfig = { damping: 25, stiffness: 100 };
 
   const pinchGesture = Gesture.Pinch()
-    .onStart(() => runOnJS(setIsZooming)(true))
+    .onStart(() => {
+      isZoomingAnim.value = withTiming(1, { duration: 150 }); // 🌟 開始放大時，觸發 UI 隱藏
+      runOnJS(setIsZooming)(true);
+    })
     .onUpdate((event) => { scale.value = Math.max(1, Math.min(event.scale, 3.5)); })
     .onEnd(() => {
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
+      isZoomingAnim.value = withTiming(0, { duration: 150 }); // 🌟 放開時，觸發 UI 顯示
       runOnJS(setIsZooming)(false); 
     });
 
@@ -42,9 +47,13 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim }) => {
     transform: [ { translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value } ],
   }));
 
-  const tagAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: screenAnim.value > 0.95 ? 1 : 0,
-  }));
+  // 🌟 修改：讓 Tag (Name) 在放大時漸隱
+  const tagAnimatedStyle = useAnimatedStyle(() => {
+    const isVisible = screenAnim.value > 0.95 ? 1 : 0;
+    return {
+      opacity: isVisible * (1 - isZoomingAnim.value),
+    };
+  });
 
   return (
     <View style={styles.card}>
@@ -65,10 +74,13 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim }) => {
   );
 };
 
-export default function OpenSaved({ itemData, onClose, originLayout }) {
+export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSaved, onSave }) {
   const [isZooming, setIsZooming] = useState(false);
+  const [isSaved, setIsSaved] = useState(true);
+
   const screenAnim = useSharedValue(0);
   const swipeTranslateY = useSharedValue(0); 
+  const isZoomingAnim = useSharedValue(0); // 🌟 新增：專門用來跑 UI 隱藏動畫的值
 
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
@@ -79,6 +91,16 @@ export default function OpenSaved({ itemData, onClose, originLayout }) {
     screenAnim.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(onClose)();
     });
+  };
+
+  const handleToggleHeart = () => {
+    if (isSaved) {
+      if (onRemoveSaved) onRemoveSaved(itemData);
+      setIsSaved(false);
+    } else {
+      if (onSave) onSave(itemData);
+      setIsSaved(true);
+    }
   };
 
   const swipeDownGesture = Gesture.Pan()
@@ -136,9 +158,13 @@ export default function OpenSaved({ itemData, onClose, originLayout }) {
     };
   });
 
-  const uiAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: screenAnim.value > 0.95 ? 1 : 0,
-  }));
+  // 🌟 修改：讓所有外層 UI (按鈕們) 在放大時漸隱
+  const uiAnimatedStyle = useAnimatedStyle(() => {
+    const isVisible = screenAnim.value > 0.95 ? 1 : 0;
+    return {
+      opacity: isVisible * (1 - isZoomingAnim.value),
+    };
+  });
 
   if (!itemData || !itemData.img) return null;
 
@@ -147,19 +173,38 @@ export default function OpenSaved({ itemData, onClose, originLayout }) {
       <GestureDetector gesture={swipeDownGesture}>
         <Reanimated.View style={[styles.screenContainer, screenAnimatedStyle, containerAnimatedStyle]}>
           <View style={styles.cardContainer}>
-            <ZoomableCard card={itemData} setIsZooming={setIsZooming} screenAnim={screenAnim} />
+            {/* 🌟 傳入 isZoomingAnim 讓內部手勢可以控制它 */}
+            <ZoomableCard 
+              card={itemData} 
+              setIsZooming={setIsZooming} 
+              screenAnim={screenAnim} 
+              isZoomingAnim={isZoomingAnim} 
+            />
           </View>
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
-            <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose}>
+            
+            <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
               <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
               </View>
             </TouchableOpacity>
-            <View style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgb(234, 128, 252)' }]}>
-                <Ionicons name="heart-outline" size={width * 0.075} color="white" />
+            
+            <TouchableOpacity 
+              style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]} 
+              onPress={handleToggleHeart}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconCircle, { 
+                backgroundColor: isSaved ? 'rgb(234, 128, 252)' : 'rgba(12, 12, 12, 0.7)' 
+              }]}>
+                <Ionicons 
+                  name={isSaved ? "heart" : "heart-outline"} 
+                  size={width * 0.075} 
+                  color="white" 
+                />
               </View>
-            </View>
+            </TouchableOpacity>
+            
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
                 <BlurView intensity={50} tint="dark" style={styles.buyNowGlassButton}>
@@ -167,6 +212,7 @@ export default function OpenSaved({ itemData, onClose, originLayout }) {
                 </BlurView>
               </TouchableOpacity>
             )}
+            
           </Reanimated.View>
         </Reanimated.View>
       </GestureDetector>

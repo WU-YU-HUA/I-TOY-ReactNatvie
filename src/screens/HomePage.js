@@ -70,6 +70,10 @@ export default function App() {
     });
   };
 
+  const handleRemoveSaved = (itemToRemove) => {
+    setSavedItems((prevItems) => prevItems.filter((i) => i.img !== itemToRemove.img));
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => Math.abs(gestureState.dx) > 5,
@@ -172,7 +176,9 @@ export default function App() {
             <OpenSaved 
               itemData={openedItem} 
               onClose={handleCloseItem} 
-              originLayout={originLayout} 
+              originLayout={originLayout}
+              onRemoveSaved={handleRemoveSaved} // 傳入 handleRemoveSaved 以便在 OpenSaved 中使用
+              onSave={handleSave}
             />
           </View>
         )}

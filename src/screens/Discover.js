@@ -15,7 +15,6 @@ import Swiper from 'react-native-deck-swiper';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-// 確保引入了 withSequence 和 withTiming
 import Reanimated, {
   interpolate,
   interpolateColor,
@@ -54,8 +53,9 @@ const SvgGlassCircle = ({ animatedProps }) => (
   </Svg>
 );
 
-// --- 核心：Reanimated 高效能縮放與平移卡片 (維持原樣) ---
-const ZoomableCard = ({ card, setIsZooming }) => {
+// --- 核心：Reanimated 高效能縮放與平移卡片 ---
+// 🌟 接收 isZoomingAnim 來控制內部 Tag 的透明度，並驅動外層 UI
+const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -64,6 +64,8 @@ const ZoomableCard = ({ card, setIsZooming }) => {
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
+      // 🌟 開始捏合時，通知動畫值和 React State
+      isZoomingAnim.value = withTiming(1, { duration: 150 });
       runOnJS(setIsZooming)(true); 
     })
     .onUpdate((event) => {
@@ -73,6 +75,8 @@ const ZoomableCard = ({ card, setIsZooming }) => {
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
+      // 🌟 放開時，恢復 UI 顯示
+      isZoomingAnim.value = withTiming(0, { duration: 150 });
       runOnJS(setIsZooming)(false); 
     });
 
@@ -97,6 +101,11 @@ const ZoomableCard = ({ card, setIsZooming }) => {
     ],
   }));
 
+  // 🌟 處理卡片內部標籤 (Tag) 的隱藏
+  const tagAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - isZoomingAnim.value, // isZoomingAnim 為 1 時，透明度為 0
+  }));
+
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
@@ -105,9 +114,13 @@ const ZoomableCard = ({ card, setIsZooming }) => {
         </Reanimated.View>
       </GestureDetector>
       
-      <BlurView intensity={50} tint="dark" style={styles.topGlassTag}>
-        <Text style={styles.tagText}>{card.tag}</Text>
-      </BlurView>
+      {!!card.tag && (
+        <Reanimated.View style={[StyleSheet.absoluteFill, tagAnimatedStyle]} pointerEvents="box-none">
+          <BlurView intensity={50} tint="dark" style={styles.topGlassTag}>
+            <Text style={styles.tagText}>{card.tag}</Text>
+          </BlurView>
+        </Reanimated.View>
+      )}
     </View>
   );
 };
@@ -120,6 +133,14 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   
   const swipeX = useSharedValue(0);
   const isButtonPressed = useRef(false); // 動畫鎖
+  
+  // 🌟 新增：控制整體 UI 淡出/淡入的動畫值 (0 = 顯示, 1 = 隱藏)
+  const isZoomingAnim = useSharedValue(0);
+
+  // --- UI 淡出動畫樣式 ---
+  const uiAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - isZoomingAnim.value,
+  }));
 
   // --- X 按鈕的動畫設定 ---
   const xButtonStyle = useAnimatedStyle(() => ({
@@ -161,17 +182,14 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   const handleSwiped = (cardIndex) => {
     setCurrentIndex(cardIndex + 1);
-    // 卡片完全滑走後，瞬間歸零不亂晃
     swipeX.value = 0; 
-    isButtonPressed.current = false; // 解鎖
+    isButtonPressed.current = false; 
   };
 
-  // --- 攔截按鈕點擊：放大後馬上俐落縮小 ---
   const handlePressCross = () => {
     if (isButtonPressed.current) return; 
     isButtonPressed.current = true;      
     
-    // 花 120ms 放大到 -150，接著花 150ms 乖乖縮回 0，完全不震盪！
     swipeX.value = withSequence(
       withTiming(-150, { duration: 200 }),
       withTiming(0, { duration: 150 })
@@ -183,7 +201,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     if (isButtonPressed.current) return; 
     isButtonPressed.current = true;      
 
-    // 花 120ms 放大到 150，接著花 150ms 乖乖縮回 0，完全不震盪！
     swipeX.value = withSequence(
       withTiming(150, { duration: 200 }),
       withTiming(0, { duration: 150 })
@@ -225,14 +242,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             onSwiped={handleSwiped}
             onSwipedAll={() => setIsSwipedAll(true)}
             onSwipedRight={(idx) => onSave(cards[idx])}
-            // 手指拖曳時的動畫更新 (只有未上鎖時才執行)
             onSwiping={(x) => { 
               if (!isButtonPressed.current) {
                 swipeX.value = x; 
               }
             }} 
             onSwipedAborted={() => {
-              // 取消滑動時，維持原本好玩的彈簧回彈感
               swipeX.value = withSpring(0, { damping: 20, stiffness: 100 });
               isButtonPressed.current = false; 
             }}
@@ -248,39 +263,51 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             disableBottomSwipe
             renderCard={(card) => {
               if (!card) return null;
-              return <ZoomableCard card={card} setIsZooming={setIsZooming} />;
+              return (
+                <ZoomableCard 
+                  card={card} 
+                  setIsZooming={setIsZooming} 
+                  isZoomingAnim={isZoomingAnim} // 🌟 將動畫值傳給卡片
+                />
+              );
             }}
           />
         </View>
 
-        <ReanimatedTouchableOpacity 
-          style={[styles.fixedCloseWrapper, xButtonStyle]}
-          onPress={handlePressCross}
-        >
-          <SvgGlassCircle animatedProps={xButtonProps} />
-          <View style={styles.iconOverlay}>
-            <Ionicons name="close" size={width * 0.08} color="#FFFFFF" />
-          </View>
-        </ReanimatedTouchableOpacity>
-        
-        <ReanimatedTouchableOpacity 
-          style={[styles.fixedHeartWrapper, heartButtonStyle]}
-          onPress={handlePressHeart}
-        >
-          <SvgGlassCircle animatedProps={heartButtonProps} />
-          <View style={styles.iconOverlay}>
-            <Ionicons name="heart-outline" size={width * 0.075} color="white" />
-          </View>
-        </ReanimatedTouchableOpacity>
+        {/* 🌟 用一個 Reanimated.View 包住三個底部按鈕，一起控制透明度 */}
+        <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, {zIndex: 20}]} pointerEvents="box-none">
+          
+          <ReanimatedTouchableOpacity 
+            style={[styles.fixedCloseWrapper, xButtonStyle]}
+            onPress={handlePressCross}
+          >
+            <SvgGlassCircle animatedProps={xButtonProps} />
+            <View style={styles.iconOverlay}>
+              <Ionicons name="close" size={width * 0.08} color="#FFFFFF" />
+            </View>
+          </ReanimatedTouchableOpacity>
+          
+          <ReanimatedTouchableOpacity 
+            style={[styles.fixedHeartWrapper, heartButtonStyle]}
+            onPress={handlePressHeart}
+          >
+            <SvgGlassCircle animatedProps={heartButtonProps} />
+            <View style={styles.iconOverlay}>
+              <Ionicons name="heart-outline" size={width * 0.075} color="white" />
+            </View>
+          </ReanimatedTouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
-          style={styles.fixedBuyNowWrapper}
-        >
-          <BlurView intensity={50} tint="dark" style={styles.buyNowGlassButton}>
-            <Text style={styles.buyNowText}>馬上購買</Text>
-          </BlurView>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
+            style={styles.fixedBuyNowWrapper}
+          >
+            <BlurView intensity={50} tint="dark" style={styles.buyNowGlassButton}>
+              <Text style={styles.buyNowText}>馬上購買</Text>
+            </BlurView>
+          </TouchableOpacity>
+
+        </Reanimated.View>
+
       </View>
     </GestureHandlerRootView>
   );
