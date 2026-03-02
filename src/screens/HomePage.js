@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -24,6 +24,7 @@ const { width, height } = Dimensions.get('window');
 const NAV_WIDTH = width * 0.8; 
 const PADDING = width * 0.01; 
 const TAB_WIDTH = (NAV_WIDTH - (PADDING * 2)) / 3; 
+const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
 const TABS = [
   { id: 'Discover', label: '探索',activeIcon: 'search', inactiveIcon: 'search' },
@@ -43,6 +44,23 @@ export default function App() {
 
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
+  //Category
+  const [categories, setCategories] = useState([]);
+
+  // 🌟 新增：組件載入時獲取分類資料
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/firebase/categories/`);
+        const json = await response.json();
+        setCategories(json)
+      } catch (error) { 
+        console.error(error); 
+      }
+    };
+
+    fetchCategories();
+  }, []); // 空陣列代表只在 App 初次載入時執行一次
 
   const handleSave = (item) => {
     setSavedItems((prevItems) => {
@@ -144,7 +162,9 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'Category' && <CategoryScreen />}
+          {activeTab === 'Category' && (
+            <CategoryScreen categories={categories} />
+          )}
         </View>
 
         {openedItem && (
