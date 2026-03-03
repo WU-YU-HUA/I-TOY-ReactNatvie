@@ -58,7 +58,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
-        <Reanimated.View style={[{ flex: 1 }, animatedStyle]}>
+        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden' }, animatedStyle]}>
           <Image source={{ uri: card.img }} style={styles.cardImage} />
         </Reanimated.View>
       </GestureDetector>
