@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator, // 🌟 新增 ActivityIndicator 用於載入畫面
   Animated,
   Dimensions,
   PanResponder,
@@ -13,6 +14,9 @@ import {
   View
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// 🌟 引入 AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import CategoryScreen from './Category';
 import DiscoverScreen from './Discover';
@@ -42,11 +46,32 @@ export default function App() {
   const [originLayout, setOriginLayout] = useState(null);
 
   const [selectedBrands, setSelectedBrands] = useState(new Set());
+  // 🌟 新增：記錄 AsyncStorage 是否讀取完成
+  const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
   
   const [categories, setCategories] = useState([]);
+
+  // 🌟 App 啟動時讀取儲存的品牌
+  useEffect(() => {
+    const loadSelectedBrands = async () => {
+      try {
+        const storedBrands = await AsyncStorage.getItem('@selected_brands');
+        if (storedBrands !== null) {
+          setSelectedBrands(new Set(JSON.parse(storedBrands)));
+        }
+      } catch (error) {
+        console.error('讀取品牌設定失敗:', error);
+      } finally {
+        // 無論成功或失敗，都標記為載入完成，釋放 DiscoverScreen
+        setIsBrandsLoaded(true);
+      }
+    };
+    
+    loadSelectedBrands();
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -61,6 +86,7 @@ export default function App() {
     fetchCategories();
   }, []);
 
+  // 🌟 切換品牌時，同步儲存進 AsyncStorage
   const toggleBrand = (brandName) => {
     setSelectedBrands((prevSet) => {
       const newSet = new Set(prevSet);
@@ -69,6 +95,10 @@ export default function App() {
       } else {
         newSet.add(brandName);
       }
+      
+      AsyncStorage.setItem('@selected_brands', JSON.stringify(Array.from(newSet)))
+        .catch(error => console.error('儲存品牌設定失敗:', error));
+        
       return newSet;
     });
   };
@@ -146,23 +176,20 @@ export default function App() {
     setOriginLayout(null);
   };
 
-  // 🌟 新增邏輯：判斷目前所在的列表與開啟項目的 Index
   const currentList = activeTab === 'Saved' ? savedItems : cards;
   const openItemIndex = openedItem ? currentList.findIndex(i => i.img === openedItem.img) : -1;
 
-  // 🌟 切換到下一張
   const handleNextItem = () => {
     if (openItemIndex >= 0 && openItemIndex < currentList.length - 1) {
       setOpenedItem(currentList[openItemIndex + 1]);
-      setOriginLayout(null); // 切換後清除座標，避免關閉時飛回錯誤的縮圖位置
+      setOriginLayout(null); 
     }
   };
 
-  // 🌟 切換到上一張
   const handlePrevItem = () => {
     if (openItemIndex > 0) {
       setOpenedItem(currentList[openItemIndex - 1]);
-      setOriginLayout(null); // 切換後清除座標，避免關閉時飛回錯誤的縮圖位置
+      setOriginLayout(null); 
     }
   };
 
@@ -173,15 +200,21 @@ export default function App() {
 
         <View style={styles.contentArea}>
           {activeTab === 'Discover' && (
-            <DiscoverScreen 
-              onSave={handleSave} 
-              cards={cards} 
-              setCards={setCards}
-              currentIndex={currentIndex}
-              setCurrentIndex={setCurrentIndex} 
-              selectedBrands={selectedBrands}
-              // 如果 DiscoverScreen 也有點擊打開卡片的功能，可以在那邊加上 onOpenItem={handleOpenItem}
-            /> 
+            // 🌟 讀取完成才顯示 DiscoverScreen，否則顯示載入畫面
+            isBrandsLoaded ? (
+              <DiscoverScreen 
+                onSave={handleSave} 
+                cards={cards} 
+                setCards={setCards}
+                currentIndex={currentIndex}
+                setCurrentIndex={setCurrentIndex} 
+                selectedBrands={selectedBrands}
+              /> 
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#EA80FC" />
+              </View>
+            )
           )} 
           
           {activeTab === 'Saved' && (
@@ -210,7 +243,6 @@ export default function App() {
               originLayout={originLayout}
               onRemoveSaved={handleRemoveSaved}
               onSave={handleSave}
-              // 🌟 傳入上一張/下一張的事件，如果有上一張才傳入 function，沒有就傳 undefined 產生阻力效果
               onNext={openItemIndex >= 0 && openItemIndex < currentList.length - 1 ? handleNextItem : undefined}
               onPrev={openItemIndex > 0 ? handlePrevItem : undefined}
             />
