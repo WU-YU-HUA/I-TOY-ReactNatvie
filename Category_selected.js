@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 // 🌟 引入 LinearGradient 來模擬玻璃反光質感
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dimensions,
   Image,

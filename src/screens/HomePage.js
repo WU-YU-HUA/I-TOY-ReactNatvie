@@ -27,7 +27,7 @@ const TAB_WIDTH = (NAV_WIDTH - (PADDING * 2)) / 3;
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
 const TABS = [
-  { id: 'Discover', label: '探索',activeIcon: 'search', inactiveIcon: 'search' },
+  { id: 'Discover', label: '探索', activeIcon: 'search', inactiveIcon: 'search' },
   { id: 'Saved', label: '最愛', activeIcon: 'heart-outline', inactiveIcon: 'heart-outline' },
   { id: 'Category', label: '分類', activeIcon: 'grid-outline', inactiveIcon: 'grid-outline' }
 ];
@@ -39,28 +39,42 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   const [openedItem, setOpenedItem] = useState(null);
-  // 🌟 修改：新增儲存點擊位置與尺寸的 state
   const [originLayout, setOriginLayout] = useState(null);
+
+  // 🌟 新增：選中品牌的狀態 (使用 Set 確保唯一性)
+  const [selectedBrands, setSelectedBrands] = useState(new Set());
 
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
-  //Category
+  
+  // Category 資料
   const [categories, setCategories] = useState([]);
 
-  // 🌟 新增：組件載入時獲取分類資料
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await fetch(`${API_URL}/api/firebase/categories/`);
         const json = await response.json();
-        setCategories(json)
+        setCategories(json);
       } catch (error) { 
         console.error(error); 
       }
     };
-
     fetchCategories();
-  }, []); // 空陣列代表只在 App 初次載入時執行一次
+  }, []);
+
+  // 🌟 新增：切換品牌選中狀態的邏輯
+  const toggleBrand = (brandName) => {
+    setSelectedBrands((prevSet) => {
+      const newSet = new Set(prevSet);
+      if (newSet.has(brandName)) {
+        newSet.delete(brandName);
+      } else {
+        newSet.add(brandName);
+      }
+      return newSet;
+    });
+  };
 
   const handleSave = (item) => {
     setSavedItems((prevItems) => {
@@ -103,8 +117,6 @@ export default function App() {
 
         lastOffset.current = targetPos;
         setActiveTab(TABS[index].id);
-        
-        // 切換 Tab 時清空開啟的商品與座標
         setOpenedItem(null);
         setOriginLayout(null);
       }
@@ -113,13 +125,10 @@ export default function App() {
 
   const handleTabPress = (tabId, index) => {
     setActiveTab(tabId);
-    
-    // 切換 Tab 時清空開啟的商品與座標
     setOpenedItem(null);
     setOriginLayout(null);
 
     const targetPos = index * TAB_WIDTH;
-    
     Animated.spring(translateX, {
       toValue: targetPos,
       friction: 6,
@@ -130,13 +139,11 @@ export default function App() {
     lastOffset.current = targetPos;
   };
 
-  // 🌟 修改：處理打開商品，並接收座標
   const handleOpenItem = (item, layout) => {
     setOpenedItem(item);
     setOriginLayout(layout);
   };
 
-  // 🌟 修改：處理關閉商品
   const handleCloseItem = () => {
     setOpenedItem(null);
     setOriginLayout(null);
@@ -158,16 +165,19 @@ export default function App() {
             /> 
           )} 
           
-          {/* 🌟 修改：把 SavedScreen 的條件放寬，只要是 Saved Tab 就渲染 */}
           {activeTab === 'Saved' && (
             <SavedScreen 
               savedItems={savedItems} 
-              onOpenItem={handleOpenItem} // 傳入我們剛剛寫的 handleOpenItem
+              onOpenItem={handleOpenItem}
             />
           )}
 
           {activeTab === 'Category' && (
-            <CategoryScreen categories={categories} />
+            <CategoryScreen 
+              categories={categories} 
+              selectedBrands={selectedBrands} // 🌟 傳入 Set
+              onToggleBrand={toggleBrand}     // 🌟 傳入 Function
+            />
           )}
         </View>
 
@@ -177,13 +187,12 @@ export default function App() {
               itemData={openedItem} 
               onClose={handleCloseItem} 
               originLayout={originLayout}
-              onRemoveSaved={handleRemoveSaved} // 傳入 handleRemoveSaved 以便在 OpenSaved 中使用
+              onRemoveSaved={handleRemoveSaved}
               onSave={handleSave}
             />
           </View>
         )}
         
-        {/* ... 底下漸層與導覽列保持完全不變 ... */}
         <LinearGradient
           colors={['rgba(12,12,12,0.9)', 'rgba(12,12,12,0.6)', 'transparent']}
           locations={[0, 0.5, 1]}
@@ -197,7 +206,6 @@ export default function App() {
           pointerEvents="none"
         />
         
-        {/* 🌟 為了讓開啟商品時導覽列不要擋住或搶焦點，加上 pointerEvents 判斷 */}
         <View style={styles.navContainer} pointerEvents="auto">
           <BlurView intensity={60} tint="dark" style={styles.bottomGlassNav} {...panResponder.panHandlers}>
             <Animated.View style={[styles.slidingBackground, { width: TAB_WIDTH, transform: [{ translateX }] }]} />
