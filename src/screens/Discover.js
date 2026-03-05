@@ -177,8 +177,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       // 如果選了 Nike 和 Adidas，url 會變成: .../api/firebase/datas/?brands=Nike&brands=Adidas
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
 
-      console.log("Fetching URL:", url); // 調試用，確認格式
-
       const response = await fetch(url);
       const json = await response.json();
       

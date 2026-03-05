@@ -28,7 +28,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
 const TABS = [
   { id: 'Discover', label: '探索', activeIcon: 'search', inactiveIcon: 'search' },
-  { id: 'Saved', label: '最愛', activeIcon: 'heart-outline', inactiveIcon: 'heart-outline' },
+  { id: 'Saved', label: '收藏', activeIcon: 'heart-outline', inactiveIcon: 'heart-outline' },
   { id: 'Category', label: '分類', activeIcon: 'grid-outline', inactiveIcon: 'grid-outline' }
 ];
 
@@ -41,13 +41,11 @@ export default function App() {
   const [openedItem, setOpenedItem] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
 
-  // 🌟 新增：選中品牌的狀態 (使用 Set 確保唯一性)
   const [selectedBrands, setSelectedBrands] = useState(new Set());
 
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
   
-  // Category 資料
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -63,7 +61,6 @@ export default function App() {
     fetchCategories();
   }, []);
 
-  // 🌟 新增：切換品牌選中狀態的邏輯
   const toggleBrand = (brandName) => {
     setSelectedBrands((prevSet) => {
       const newSet = new Set(prevSet);
@@ -80,7 +77,7 @@ export default function App() {
     setSavedItems((prevItems) => {
       const isExisted = prevItems.find((i) => i.img === item.img);
       if (isExisted) return prevItems;
-      return [...prevItems, item];
+      return [item, ...prevItems];
     });
   };
 
@@ -149,6 +146,26 @@ export default function App() {
     setOriginLayout(null);
   };
 
+  // 🌟 新增邏輯：判斷目前所在的列表與開啟項目的 Index
+  const currentList = activeTab === 'Saved' ? savedItems : cards;
+  const openItemIndex = openedItem ? currentList.findIndex(i => i.img === openedItem.img) : -1;
+
+  // 🌟 切換到下一張
+  const handleNextItem = () => {
+    if (openItemIndex >= 0 && openItemIndex < currentList.length - 1) {
+      setOpenedItem(currentList[openItemIndex + 1]);
+      setOriginLayout(null); // 切換後清除座標，避免關閉時飛回錯誤的縮圖位置
+    }
+  };
+
+  // 🌟 切換到上一張
+  const handlePrevItem = () => {
+    if (openItemIndex > 0) {
+      setOpenedItem(currentList[openItemIndex - 1]);
+      setOriginLayout(null); // 切換後清除座標，避免關閉時飛回錯誤的縮圖位置
+    }
+  };
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
@@ -163,6 +180,7 @@ export default function App() {
               currentIndex={currentIndex}
               setCurrentIndex={setCurrentIndex} 
               selectedBrands={selectedBrands}
+              // 如果 DiscoverScreen 也有點擊打開卡片的功能，可以在那邊加上 onOpenItem={handleOpenItem}
             /> 
           )} 
           
@@ -176,8 +194,8 @@ export default function App() {
           {activeTab === 'Category' && (
             <CategoryScreen 
               categories={categories} 
-              selectedBrands={selectedBrands} // 🌟 傳入 Set
-              onToggleBrand={toggleBrand}     // 🌟 傳入 Function
+              selectedBrands={selectedBrands} 
+              onToggleBrand={toggleBrand}     
             />
           )}
         </View>
@@ -190,6 +208,9 @@ export default function App() {
               originLayout={originLayout}
               onRemoveSaved={handleRemoveSaved}
               onSave={handleSave}
+              // 🌟 傳入上一張/下一張的事件，如果有上一張才傳入 function，沒有就傳 undefined 產生阻力效果
+              onNext={openItemIndex >= 0 && openItemIndex < currentList.length - 1 ? handleNextItem : undefined}
+              onPrev={openItemIndex > 0 ? handlePrevItem : undefined}
             />
           </View>
         )}

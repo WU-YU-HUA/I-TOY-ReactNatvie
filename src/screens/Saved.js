@@ -39,9 +39,6 @@ const SavedItemCard = ({ item, onOpenItem }) => {
 };
 
 export default function SavedScreen({ savedItems = [], onOpenItem }) {
-  // 🌟 反轉陣列，讓最新的收藏排在最前面
-  const reversedItems = [...savedItems].reverse();
-
   return (
     <View style={styles.screenContainer}>
       <LinearGradient colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']} locations={[0, 0.5, 1]} style={styles.fullWidthHeader}>
@@ -52,14 +49,14 @@ export default function SavedScreen({ savedItems = [], onOpenItem }) {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {reversedItems.map((item, index) => (
+        {savedItems.map((item, index) => (
           <SavedItemCard 
             key={item.img + index} 
             item={item} 
             onOpenItem={onOpenItem} 
           />
         ))}
-        {reversedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
+        {savedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
       </ScrollView>
     </View>
   );

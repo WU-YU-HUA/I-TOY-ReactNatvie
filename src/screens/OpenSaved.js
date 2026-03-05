@@ -8,7 +8,7 @@ import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, wit
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13); 
 
-// 🌟 接收 isZoomingAnim 參數
+// 🌟 ZoomableCard 保持不變
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -18,7 +18,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      isZoomingAnim.value = withTiming(1, { duration: 150 }); // 🌟 開始放大時，觸發 UI 隱藏
+      isZoomingAnim.value = withTiming(1, { duration: 150 }); 
       runOnJS(setIsZooming)(true);
     })
     .onUpdate((event) => { scale.value = Math.max(1, Math.min(event.scale, 3.5)); })
@@ -26,7 +26,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
-      isZoomingAnim.value = withTiming(0, { duration: 150 }); // 🌟 放開時，觸發 UI 顯示
+      isZoomingAnim.value = withTiming(0, { duration: 150 }); 
       runOnJS(setIsZooming)(false); 
     });
 
@@ -47,7 +47,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
     transform: [ { translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value } ],
   }));
 
-  // 🌟 修改：讓 Tag (Name) 在放大時漸隱
   const tagAnimatedStyle = useAnimatedStyle(() => {
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
     return {
@@ -74,13 +73,15 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
   );
 };
 
-export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSaved, onSave }) {
+// 🌟 新增 onNext, onPrev props 用來接收外層的切換事件
+export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSaved, onSave, onNext, onPrev }) {
   const [isZooming, setIsZooming] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
 
   const screenAnim = useSharedValue(0);
   const swipeTranslateY = useSharedValue(0); 
-  const isZoomingAnim = useSharedValue(0); // 🌟 新增：專門用來跑 UI 隱藏動畫的值
+  const swipeTranslateX = useSharedValue(0); // 🌟 新增：控制左右滑動的位移
+  const isZoomingAnim = useSharedValue(0); 
 
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
@@ -103,9 +104,11 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
     }
   };
 
+  // 🌟 修改：加入 failOffsetX 避免與左右滑動衝突
   const swipeDownGesture = Gesture.Pan()
     .maxPointers(1) 
     .activeOffsetY([-10, 10]) 
+    .failOffsetX([-20, 20]) // 如果水平移動較多，就放棄下滑
     .onUpdate((event) => {
       if (event.translationY > 0) {
         swipeTranslateY.value = event.translationY;
@@ -118,6 +121,51 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
         swipeTranslateY.value = withTiming(0, { duration: 200 });
       }
     });
+
+  // 🌟 新增：左右滑動手勢
+  const swipeHorizontalGesture = Gesture.Pan()
+    .maxPointers(1)
+    .activeOffsetX([-20, 20]) 
+    .failOffsetY([-20, 20]) // 如果垂直移動較多，就放棄左右滑
+    .onUpdate((event) => {
+      // 如果沒有下一張/上一張可以切換，增加滑動阻力 (除以3) 帶來更好的手感
+      if ((event.translationX < 0 && !onNext) || (event.translationX > 0 && !onPrev)) {
+        swipeTranslateX.value = event.translationX / 3;
+      } else {
+        swipeTranslateX.value = event.translationX;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationX < -width * 0.2 || event.velocityX < -800) {
+        // 👈 往左滑 (切換下一張)
+        if (onNext) {
+          swipeTranslateX.value = withTiming(-width, { duration: 200 }, () => {
+            runOnJS(onNext)();
+            swipeTranslateX.value = width; // 瞬間移動到畫面右側
+            swipeTranslateX.value = withTiming(0, { duration: 250 }); // 平滑滑入畫面
+          });
+        } else {
+          swipeTranslateX.value = withTiming(0, { duration: 200 }); // 回彈
+        }
+      } else if (event.translationX > width * 0.2 || event.velocityX > 800) {
+        // 👉 往右滑 (切換上一張)
+        if (onPrev) {
+          swipeTranslateX.value = withTiming(width, { duration: 200 }, () => {
+            runOnJS(onPrev)();
+            swipeTranslateX.value = -width; // 瞬間移動到畫面左側
+            swipeTranslateX.value = withTiming(0, { duration: 250 }); // 平滑滑入畫面
+          });
+        } else {
+          swipeTranslateX.value = withTiming(0, { duration: 200 }); // 回彈
+        }
+      } else {
+        // 滑動距離不足，回彈
+        swipeTranslateX.value = withTiming(0, { duration: 200 });
+      }
+    });
+
+  // 🌟 將兩個手勢包裝起來 (Race 會根據使用者一開始的滑動方向來決定啟用哪一個)
+  const screenGestures = Gesture.Race(swipeDownGesture, swipeHorizontalGesture);
 
   const containerAnimatedStyle = useAnimatedStyle(() => ({
     pointerEvents: screenAnim.value > 0.8 ? 'auto' : 'none',
@@ -141,7 +189,10 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
         width: currentWidth,
         height: currentHeight,
         borderRadius: currentRadius,
-        transform: [{ scale: swipeScale }],
+        transform: [
+          { translateX: swipeTranslateX.value }, // 🌟 加入 X 軸動畫
+          { scale: swipeScale }
+        ],
         overflow: 'hidden',
       };
     }
@@ -153,12 +204,12 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
       height: '100%',
       transform: [
         { translateY: height * (1 - screenAnim.value) + swipeTranslateY.value },
+        { translateX: swipeTranslateX.value }, // 🌟 加入 X 軸動畫
         { scale: fallbackScale } 
       ],
     };
   });
 
-  // 🌟 修改：讓所有外層 UI (按鈕們) 在放大時漸隱
   const uiAnimatedStyle = useAnimatedStyle(() => {
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
     return {
@@ -170,10 +221,10 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
 
   return (
     <GestureHandlerRootView style={styles.rootOverlay} pointerEvents="box-none">
-      <GestureDetector gesture={swipeDownGesture}>
+      {/* 🌟 套用整合後的 screenGestures */}
+      <GestureDetector gesture={screenGestures}>
         <Reanimated.View style={[styles.screenContainer, screenAnimatedStyle, containerAnimatedStyle]}>
           <View style={styles.cardContainer}>
-            {/* 🌟 傳入 isZoomingAnim 讓內部手勢可以控制它 */}
             <ZoomableCard 
               card={itemData} 
               setIsZooming={setIsZooming} 
