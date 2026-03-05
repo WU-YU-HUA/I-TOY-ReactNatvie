@@ -162,6 +162,7 @@ export default function App() {
               setCards={setCards}
               currentIndex={currentIndex}
               setCurrentIndex={setCurrentIndex} 
+              selectedBrands={selectedBrands}
             /> 
           )} 
           

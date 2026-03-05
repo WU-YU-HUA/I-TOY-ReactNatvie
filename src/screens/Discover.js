@@ -125,7 +125,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
   );
 };
 
-export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex }) {
+export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex, selectedBrands }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSwipedAll, setIsSwipedAll] = useState(false);
   const [isZooming, setIsZooming] = useState(false); 
@@ -161,16 +161,38 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const fetchData = async () => {
     setIsLoading(true);
     setIsSwipedAll(false);
+    
     try {
-      const response = await fetch(`${API_URL}/api/firebase/datas/`);
+      // 1. 建立 URLSearchParams 物件
+      const params = new URLSearchParams();
+      
+      // 2. 遍歷 Set，對每個品牌執行 append，這會自動產生 brands=A&brands=B 的格式
+      if (selectedBrands && selectedBrands.size > 0) {
+        selectedBrands.forEach(brand => {
+          params.append('brands', brand);
+        });
+      }
+
+      // 3. 組合完整的 URL
+      // 如果選了 Nike 和 Adidas，url 會變成: .../api/firebase/datas/?brands=Nike&brands=Adidas
+      const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
+
+      console.log("Fetching URL:", url); // 調試用，確認格式
+
+      const response = await fetch(url);
       const json = await response.json();
+      
       const formData = json.map(item => ({
-        id: item.origin_url, url: item.shopee_url, img: item.img, tag: item.tag
+        id: item.origin_url, 
+        url: item.shopee_url, 
+        img: item.img, 
+        tag: item.tag
       }));
+
       setCards(formData);
       setCurrentIndex(0);
     } catch (error) { 
-      console.error(error); 
+      console.error("Fetch Error:", error); 
     } finally { 
       setIsLoading(false); 
     }
