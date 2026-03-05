@@ -203,6 +203,8 @@ export default function App() {
         {openedItem && (
           <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
             <OpenSaved 
+              prevItemData={openItemIndex > 0 ? currentList[openItemIndex - 1] : null}
+              nextItemData={openItemIndex >= 0 && openItemIndex < currentList.length - 1 ? currentList[openItemIndex + 1] : null}
               itemData={openedItem} 
               onClose={handleCloseItem} 
               originLayout={originLayout}

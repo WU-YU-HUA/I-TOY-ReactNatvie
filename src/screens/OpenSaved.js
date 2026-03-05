@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13); 
+const GAP = width*0.1; // 🌟 1. 定義卡片之間的黑色間距寬度
 
-// 🌟 ZoomableCard 保持不變
-const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
+const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -18,16 +18,16 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      isZoomingAnim.value = withTiming(1, { duration: 150 }); 
-      runOnJS(setIsZooming)(true);
+      if (isZoomingAnim) isZoomingAnim.value = withTiming(1, { duration: 150 }); 
+      if (setIsZooming) runOnJS(setIsZooming)(true);
     })
     .onUpdate((event) => { scale.value = Math.max(1, Math.min(event.scale, 3.5)); })
     .onEnd(() => {
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
-      isZoomingAnim.value = withTiming(0, { duration: 150 }); 
-      runOnJS(setIsZooming)(false); 
+      if (isZoomingAnim) isZoomingAnim.value = withTiming(0, { duration: 150 }); 
+      if (setIsZooming) runOnJS(setIsZooming)(false); 
     });
 
   const panGesture = Gesture.Pan()
@@ -48,19 +48,16 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
   }));
 
   const tagAnimatedStyle = useAnimatedStyle(() => {
+    if (!isActive || !screenAnim || !isZoomingAnim) return { opacity: 1 };
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
-    return {
-      opacity: isVisible * (1 - isZoomingAnim.value),
-    };
+    return { opacity: isVisible * (1 - isZoomingAnim.value) };
   });
 
-  return (
+  const content = (
     <View style={styles.card}>
-      <GestureDetector gesture={composedGesture}>
-        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden' }, animatedStyle]}>
-          <Image source={{ uri: card.img }} style={styles.cardImage} />
-        </Reanimated.View>
-      </GestureDetector>
+      <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden' }, isActive ? animatedStyle : {}]}>
+        <Image source={{ uri: card.img }} style={styles.cardImage} />
+      </Reanimated.View>
       
       {!!card.tag && (
         <Reanimated.View style={[StyleSheet.absoluteFill, tagAnimatedStyle]} pointerEvents="box-none">
@@ -71,17 +68,29 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim }) => {
       )}
     </View>
   );
+
+  return isActive ? (
+    <GestureDetector gesture={composedGesture}>{content}</GestureDetector>
+  ) : (
+    content
+  );
 };
 
-// 🌟 新增 onNext, onPrev props 用來接收外層的切換事件
-export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSaved, onSave, onNext, onPrev }) {
+export default function OpenSaved({ itemData, prevItemData, nextItemData, onClose, originLayout, onRemoveSaved, onSave, onNext, onPrev }) {
   const [isZooming, setIsZooming] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
 
   const screenAnim = useSharedValue(0);
   const swipeTranslateY = useSharedValue(0); 
-  const swipeTranslateX = useSharedValue(0); // 🌟 新增：控制左右滑動的位移
+  const swipeTranslateX = useSharedValue(0); 
   const isZoomingAnim = useSharedValue(0); 
+
+  // 🌟 2. 解決閃爍的核心：在 React 準備好新資料的瞬間，完美同步將動畫值歸零
+  const prevItemRef = useRef(itemData);
+  if (prevItemRef.current?.img !== itemData?.img) {
+    prevItemRef.current = itemData;
+    swipeTranslateX.value = 0; // 當偵測到照片換了，立刻歸零
+  }
 
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
@@ -104,11 +113,10 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
     }
   };
 
-  // 🌟 修改：加入 failOffsetX 避免與左右滑動衝突
   const swipeDownGesture = Gesture.Pan()
     .maxPointers(1) 
     .activeOffsetY([-10, 10]) 
-    .failOffsetX([-20, 20]) // 如果水平移動較多，就放棄下滑
+    .failOffsetX([-20, 20]) 
     .onUpdate((event) => {
       if (event.translationY > 0) {
         swipeTranslateY.value = event.translationY;
@@ -122,13 +130,11 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
       }
     });
 
-  // 🌟 新增：左右滑動手勢
   const swipeHorizontalGesture = Gesture.Pan()
     .maxPointers(1)
-    .activeOffsetX([-20, 20]) 
-    .failOffsetY([-20, 20]) // 如果垂直移動較多，就放棄左右滑
+    .activeOffsetX([-15, 15]) 
+    .failOffsetY([-20, 20]) 
     .onUpdate((event) => {
-      // 如果沒有下一張/上一張可以切換，增加滑動阻力 (除以3) 帶來更好的手感
       if ((event.translationX < 0 && !onNext) || (event.translationX > 0 && !onPrev)) {
         swipeTranslateX.value = event.translationX / 3;
       } else {
@@ -136,35 +142,29 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
       }
     })
     .onEnd((event) => {
-      if (event.translationX < -width * 0.2 || event.velocityX < -800) {
-        // 👈 往左滑 (切換下一張)
+      if (event.translationX < -width * 0.15 || event.velocityX < -600) {
         if (onNext) {
-          swipeTranslateX.value = withTiming(-width, { duration: 200 }, () => {
+          // 🌟 往左滑 (下一張)：滑動距離要包含 GAP，且不在此處歸零（交給上面的 useRef 處理）
+          swipeTranslateX.value = withTiming(-(width + GAP), { duration: 250 }, () => {
             runOnJS(onNext)();
-            swipeTranslateX.value = width; // 瞬間移動到畫面右側
-            swipeTranslateX.value = withTiming(0, { duration: 250 }); // 平滑滑入畫面
           });
         } else {
-          swipeTranslateX.value = withTiming(0, { duration: 200 }); // 回彈
+          swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200, overshootClamping: true}); 
         }
-      } else if (event.translationX > width * 0.2 || event.velocityX > 800) {
-        // 👉 往右滑 (切換上一張)
+      } else if (event.translationX > width * 0.15 || event.velocityX > 600) {
         if (onPrev) {
-          swipeTranslateX.value = withTiming(width, { duration: 200 }, () => {
+          // 🌟 往右滑 (上一張)：滑動距離要包含 GAP
+          swipeTranslateX.value = withTiming(width + GAP, { duration: 250 }, () => {
             runOnJS(onPrev)();
-            swipeTranslateX.value = -width; // 瞬間移動到畫面左側
-            swipeTranslateX.value = withTiming(0, { duration: 250 }); // 平滑滑入畫面
           });
         } else {
-          swipeTranslateX.value = withTiming(0, { duration: 200 }); // 回彈
+          swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200, overshootClamping: true});
         }
       } else {
-        // 滑動距離不足，回彈
-        swipeTranslateX.value = withTiming(0, { duration: 200 });
+        swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200 });
       }
     });
 
-  // 🌟 將兩個手勢包裝起來 (Race 會根據使用者一開始的滑動方向來決定啟用哪一個)
   const screenGestures = Gesture.Race(swipeDownGesture, swipeHorizontalGesture);
 
   const containerAnimatedStyle = useAnimatedStyle(() => ({
@@ -189,10 +189,7 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
         width: currentWidth,
         height: currentHeight,
         borderRadius: currentRadius,
-        transform: [
-          { translateX: swipeTranslateX.value }, // 🌟 加入 X 軸動畫
-          { scale: swipeScale }
-        ],
+        transform: [{ scale: swipeScale }],
         overflow: 'hidden',
       };
     }
@@ -204,34 +201,62 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
       height: '100%',
       transform: [
         { translateY: height * (1 - screenAnim.value) + swipeTranslateY.value },
-        { translateX: swipeTranslateX.value }, // 🌟 加入 X 軸動畫
         { scale: fallbackScale } 
       ],
     };
   });
 
+  // 🌟 修改軌道：加入 GAP 寬度，並將初始偏移量調整為 -(width + GAP) 來讓中間那張置中
+  const trackAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      flex: 1,
+      flexDirection: 'row',
+      width: width * 3 + GAP * 2, // 3張卡片的寬度 + 2個間隔
+      transform: [{ translateX: swipeTranslateX.value - (width + GAP) }],
+    };
+  });
+
   const uiAnimatedStyle = useAnimatedStyle(() => {
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
-    return {
-      opacity: isVisible * (1 - isZoomingAnim.value),
-    };
+    return { opacity: isVisible * (1 - isZoomingAnim.value) };
   });
 
   if (!itemData || !itemData.img) return null;
 
   return (
     <GestureHandlerRootView style={styles.rootOverlay} pointerEvents="box-none">
-      {/* 🌟 套用整合後的 screenGestures */}
       <GestureDetector gesture={screenGestures}>
         <Reanimated.View style={[styles.screenContainer, screenAnimatedStyle, containerAnimatedStyle]}>
-          <View style={styles.cardContainer}>
-            <ZoomableCard 
-              card={itemData} 
-              setIsZooming={setIsZooming} 
-              screenAnim={screenAnim} 
-              isZoomingAnim={isZoomingAnim} 
-            />
-          </View>
+          
+          <Reanimated.View style={trackAnimatedStyle}>
+            {/* 左側：上一張 */}
+            <View style={{ width, height: '100%' }}>
+              {prevItemData && <ZoomableCard card={prevItemData} isActive={false} />}
+            </View>
+
+            {/* 🌟 左間距 */}
+            <View style={{ width: GAP, height: '100%' }} />
+
+            {/* 中間：目前卡片 */}
+            <View style={{ width, height: '100%' }}>
+              <ZoomableCard 
+                card={itemData} 
+                setIsZooming={setIsZooming} 
+                screenAnim={screenAnim} 
+                isZoomingAnim={isZoomingAnim}
+                isActive={true} 
+              />
+            </View>
+
+            {/* 🌟 右間距 */}
+            <View style={{ width: GAP, height: '100%' }} />
+
+            {/* 右側：下一張 */}
+            <View style={{ width, height: '100%' }}>
+              {nextItemData && <ZoomableCard card={nextItemData} isActive={false} />}
+            </View>
+          </Reanimated.View>
+
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
             
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
@@ -245,14 +270,8 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
               onPress={handleToggleHeart}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconCircle, { 
-                backgroundColor: isSaved ? 'rgb(234, 128, 252)' : 'rgba(12, 12, 12, 0.7)' 
-              }]}>
-                <Ionicons 
-                  name={isSaved ? "heart" : "heart-outline"} 
-                  size={width * 0.075} 
-                  color="white" 
-                />
+              <View style={[styles.iconCircle, { backgroundColor: isSaved ? 'rgb(234, 128, 252)' : 'rgba(12, 12, 12, 0.7)' }]}>
+                <Ionicons name={isSaved ? "heart" : "heart-outline"} size={width * 0.075} color="white" />
               </View>
             </TouchableOpacity>
             
@@ -274,7 +293,6 @@ export default function OpenSaved({ itemData, onClose, originLayout, onRemoveSav
 const styles = StyleSheet.create({
   rootOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 90 },
   screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
-  cardContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
   cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.04, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden', maxWidth: width * 0.9 },
