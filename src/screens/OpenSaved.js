@@ -1,20 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13); 
-const GAP = width*0.1; // 🌟 1. 定義卡片之間的黑色間距寬度
+const GAP = width*0.1 // 🌟 卡片之間的黑色間距寬度
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  const springConfig = { damping: 25, stiffness: 100 };
+  const springConfig = { damping: 25, stiffness: 100, overshootClamping: true}; // overshootClamping: true 過於回彈問題
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -85,16 +85,15 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   const swipeTranslateX = useSharedValue(0); 
   const isZoomingAnim = useSharedValue(0); 
 
-  // 🌟 2. 解決閃爍的核心：在 React 準備好新資料的瞬間，完美同步將動畫值歸零
-  const prevItemRef = useRef(itemData);
-  if (prevItemRef.current?.img !== itemData?.img) {
-    prevItemRef.current = itemData;
-    swipeTranslateX.value = 0; // 當偵測到照片換了，立刻歸零
-  }
-
+  // 🌟 1. 負責打開卡片時的「放大動畫」(你剛剛不小心刪掉的就是這段)
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
   }, []);
+
+  // 🌟 2. 負責切換照片時的「完美歸零」(用 useLayoutEffect 解決警告與閃爍)
+  useLayoutEffect(() => {
+    swipeTranslateX.value = 0;
+  }, [itemData]);
 
   const handleClose = () => {
     swipeTranslateY.value = withTiming(0, { duration: 200 }); 
@@ -144,24 +143,27 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
     .onEnd((event) => {
       if (event.translationX < -width * 0.15 || event.velocityX < -600) {
         if (onNext) {
-          // 🌟 往左滑 (下一張)：滑動距離要包含 GAP，且不在此處歸零（交給上面的 useRef 處理）
+          // 🌟 成功切換下一張
           swipeTranslateX.value = withTiming(-(width + GAP), { duration: 250 }, () => {
             runOnJS(onNext)();
           });
         } else {
-          swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200, overshootClamping: true}); 
+          // 🌟 無下一張時沉穩回彈
+          swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true }); 
         }
       } else if (event.translationX > width * 0.15 || event.velocityX > 600) {
         if (onPrev) {
-          // 🌟 往右滑 (上一張)：滑動距離要包含 GAP
+          // 🌟 成功切換上一張
           swipeTranslateX.value = withTiming(width + GAP, { duration: 250 }, () => {
             runOnJS(onPrev)();
           });
         } else {
-          swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200, overshootClamping: true});
+          // 🌟 無上一張時沉穩回彈
+          swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true });
         }
       } else {
-        swipeTranslateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        // 🌟 滑動距離不夠放棄切換，沉穩回彈
+        swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true });
       }
     });
 
@@ -206,12 +208,11 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
     };
   });
 
-  // 🌟 修改軌道：加入 GAP 寬度，並將初始偏移量調整為 -(width + GAP) 來讓中間那張置中
   const trackAnimatedStyle = useAnimatedStyle(() => {
     return {
       flex: 1,
       flexDirection: 'row',
-      width: width * 3 + GAP * 2, // 3張卡片的寬度 + 2個間隔
+      width: width * 3 + GAP * 2,
       transform: [{ translateX: swipeTranslateX.value - (width + GAP) }],
     };
   });
@@ -234,7 +235,6 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
               {prevItemData && <ZoomableCard card={prevItemData} isActive={false} />}
             </View>
 
-            {/* 🌟 左間距 */}
             <View style={{ width: GAP, height: '100%' }} />
 
             {/* 中間：目前卡片 */}
@@ -248,7 +248,6 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
               />
             </View>
 
-            {/* 🌟 右間距 */}
             <View style={{ width: GAP, height: '100%' }} />
 
             {/* 右側：下一張 */}
