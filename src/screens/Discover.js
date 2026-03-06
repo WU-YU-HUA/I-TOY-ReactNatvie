@@ -35,11 +35,9 @@ const strokeWidth = 1;
 const circleRadius = (buttonSize - strokeWidth) / 2;
 const centerCoord = buttonSize / 2;
 
-// --- 統一使用 Reanimated 建立動畫元件 ---
 const ReanimatedCircle = Reanimated.createAnimatedComponent(Circle);
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
 
-// 接收 animatedProps 來改變 SVG 的填色
 const SvgGlassCircle = ({ animatedProps }) => (
   <Svg height={buttonSize} width={buttonSize} style={styles.svgContainer}>
     <ReanimatedCircle
@@ -53,18 +51,15 @@ const SvgGlassCircle = ({ animatedProps }) => (
   </Svg>
 );
 
-// --- 核心：Reanimated 高效能縮放與平移卡片 ---
-// 🌟 接收 isZoomingAnim 來控制內部 Tag 的透明度，並驅動外層 UI
-const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
+const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  const springConfig = { damping: 25, stiffness: 100, overshootClamping: true}; // overshootClamping: true 過於回彈問題
+  const springConfig = { damping: 25, stiffness: 100, overshootClamping: true};
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      // 🌟 開始捏合時，通知動畫值和 React State
       isZoomingAnim.value = withTiming(1, { duration: 150 });
       runOnJS(setIsZooming)(true); 
     })
@@ -75,7 +70,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
-      // 🌟 放開時，恢復 UI 顯示
       isZoomingAnim.value = withTiming(0, { duration: 150 });
       runOnJS(setIsZooming)(false); 
     });
@@ -91,7 +85,15 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
       translateY.value = withSpring(0, springConfig);
     });
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (onDoubleTap) {
+        runOnJS(onDoubleTap)(); 
+      }
+    });
+
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, doubleTapGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -101,9 +103,8 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim }) => {
     ],
   }));
 
-  // 🌟 處理卡片內部標籤 (Tag) 的隱藏
   const tagAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: 1 - isZoomingAnim.value, // isZoomingAnim 為 1 時，透明度為 0
+    opacity: 1 - isZoomingAnim.value, 
   }));
 
   return (
@@ -132,17 +133,15 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const swiperRef = useRef(null);
   
   const swipeX = useSharedValue(0);
-  const isButtonPressed = useRef(false); // 動畫鎖
+  const isButtonPressed = useRef(false); 
+  const lockTimeout = useRef(null); 
   
-  // 🌟 新增：控制整體 UI 淡出/淡入的動畫值 (0 = 顯示, 1 = 隱藏)
   const isZoomingAnim = useSharedValue(0);
 
-  // --- UI 淡出動畫樣式 ---
   const uiAnimatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - isZoomingAnim.value,
   }));
 
-  // --- X 按鈕的動畫設定 ---
   const xButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.3], 'clamp') }]
   }));
@@ -150,7 +149,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     fill: interpolateColor(swipeX.value, [-150, 0], ['rgb(255, 0, 0)', 'rgba(12, 12, 12, 0.55)'])
   }));
 
-  // --- 愛心按鈕的動畫設定 ---
   const heartButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.3, 1.5], 'clamp') }]
   }));
@@ -163,20 +161,13 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     setIsSwipedAll(false);
     
     try {
-      // 1. 建立 URLSearchParams 物件
       const params = new URLSearchParams();
-      
-      // 2. 遍歷 Set，對每個品牌執行 append，這會自動產生 brands=A&brands=B 的格式
       if (selectedBrands && selectedBrands.size > 0) {
         selectedBrands.forEach(brand => {
           params.append('brands', brand);
         });
       }
-
-      // 3. 組合完整的 URL
-      // 如果選了 Nike 和 Adidas，url 會變成: .../api/firebase/datas/?brands=Nike&brands=Adidas
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
-
       const response = await fetch(url);
       const json = await response.json();
       
@@ -202,30 +193,43 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   const handleSwiped = (cardIndex) => {
     setCurrentIndex(cardIndex + 1);
-    swipeX.value = 0; 
-    isButtonPressed.current = false; 
+    if (!isButtonPressed.current) {
+      swipeX.value = 0; 
+    }
   };
 
   const handlePressCross = () => {
+    // 🌟 1. 擋下連續點擊：如果在動畫中，直接返回
     if (isButtonPressed.current) return; 
-    isButtonPressed.current = true;      
-    
+
+    isButtonPressed.current = true;
+    if (lockTimeout.current) clearTimeout(lockTimeout.current);
+    // 🌟 2. 鎖定剛好 300 毫秒
+    lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
+
+    // 🌟 3. 動畫總時長改為 150 + 150 = 300 毫秒，與鎖定時間完美吻合
     swipeX.value = withSequence(
-      withTiming(-150, { duration: 200 }),
+      withTiming(-150, { duration: 150 }),
       withTiming(0, { duration: 150 })
     );
-    swiperRef.current?.swipeLeft();
+    setTimeout(() => swiperRef.current?.swipeLeft(), 20);
   };
 
   const handlePressHeart = () => {
+    // 🌟 1. 擋下連續雙擊/點擊
     if (isButtonPressed.current) return; 
-    isButtonPressed.current = true;      
 
+    isButtonPressed.current = true;
+    if (lockTimeout.current) clearTimeout(lockTimeout.current);
+    // 🌟 2. 鎖定剛好 300 毫秒
+    lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
+
+    // 🌟 3. 動畫總時長改為 150 + 150 = 300 毫秒，與鎖定時間完美吻合
     swipeX.value = withSequence(
-      withTiming(150, { duration: 200 }),
+      withTiming(150, { duration: 150 }),
       withTiming(0, { duration: 150 })
     );
-    swiperRef.current?.swipeRight();
+    setTimeout(() => swiperRef.current?.swipeRight(), 20);
   };
 
   if (isLoading) {
@@ -268,12 +272,14 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
               }
             }} 
             onSwipedAborted={() => {
-              swipeX.value = withSpring(0, { damping: 20, stiffness: 100 });
-              isButtonPressed.current = false; 
+              if (!isButtonPressed.current) {
+                swipeX.value = withSpring(0, { damping: 20, stiffness: 100 });
+              }
             }}
             horizontalSwipe={!isZooming} 
             stackSize={2}
             stackScale={0}
+            stackSeparation={0}
             animateCardOpacity={false}
             backgroundColor={'transparent'}
             cardVerticalMargin={0}
@@ -287,14 +293,14 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                 <ZoomableCard 
                   card={card} 
                   setIsZooming={setIsZooming} 
-                  isZoomingAnim={isZoomingAnim} // 🌟 將動畫值傳給卡片
+                  isZoomingAnim={isZoomingAnim}
+                  onDoubleTap={handlePressHeart} 
                 />
               );
             }}
           />
         </View>
 
-        {/* 🌟 用一個 Reanimated.View 包住三個底部按鈕，一起控制透明度 */}
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, {zIndex: 20}]} pointerEvents="box-none">
           
           <ReanimatedTouchableOpacity 
@@ -340,7 +346,7 @@ const styles = StyleSheet.create({
   swiperRoot: { backgroundColor: 'transparent' },
   card: { width: width, height: height, backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
   cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden' },
+  topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden', maxWidth: width*0.9 },
   tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
   fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
