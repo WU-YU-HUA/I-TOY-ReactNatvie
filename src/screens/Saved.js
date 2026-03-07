@@ -44,7 +44,7 @@ export default function SavedScreen({ savedItems = [], onOpenItem }) {
       <LinearGradient colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']} locations={[0, 0.5, 1]} style={styles.fullWidthHeader}>
         <View style={styles.headerContent}>
           <Text style={styles.savedTitle}>我的收藏</Text>
-          <Text style={styles.savedSubtitle}>{savedItems.length} items saved</Text>
+          <Text style={styles.savedSubtitle}>共 {savedItems.length} 個收藏</Text>
         </View>
       </LinearGradient>
 
@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
   fullWidthHeader: { position: 'absolute', top: 0, width: '100%', zIndex: 20 },
   headerContent: { paddingTop: Platform.OS === 'ios' ? 80 : 60, paddingBottom: 30, paddingHorizontal: 25 },
   scrollContent: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 160, paddingBottom: 130 },
-  savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: -5 },
-  savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: 0, marginBottom: 22 },
+  savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)'},
   savedItemContainer: { width: CARD_WIDTH, marginBottom: COLUMN_GAP + 10 },
   savedItemCard: { width: CARD_WIDTH, height: CARD_WIDTH * 1.4, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: '#1C1C1E', overflow: 'hidden' },
   savedItemImage: { width: '100%', height: '100%', resizeMode: 'cover' },

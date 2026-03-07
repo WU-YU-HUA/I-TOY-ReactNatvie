@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: '100%',
     zIndex: 20,
-    paddingTop: Platform.OS === 'ios' ? 70 : 50, 
+    paddingTop: Platform.OS === 'ios' ? 80 : 60, 
     paddingHorizontal: 25,
   },
   savedTitle: { 

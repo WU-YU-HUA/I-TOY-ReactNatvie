@@ -309,8 +309,8 @@ const styles = StyleSheet.create({
     width: NAV_WIDTH,
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    // borderWidth: 1,
+    // borderColor: 'rgba(255, 255, 255, 0.1)',
     padding: PADDING,
     borderRadius: 40,
     overflow: 'hidden',
@@ -331,9 +331,6 @@ const styles = StyleSheet.create({
   slidingGlass: {
     flex: 1,
     backgroundColor: 'rgba(234, 128, 252, 0.2)', // 保留粉紫色，帶有透明度
-    borderWidth: 1,
-    borderColor: 'rgba(234, 128, 252, 0.4)',     // 加上一點邊框反光感
-    borderRadius: 30,
   },
 
   navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: height * 0.015, zIndex: 2 },
