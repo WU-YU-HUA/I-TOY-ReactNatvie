@@ -93,43 +93,44 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
               return (
                 <View key={item.brand + index} style={styles.cardContainer}>
                   
-                  <TouchableOpacity 
-                    activeOpacity={0.8} 
-                    onPress={() => onToggleBrand(item.brand)}
-                    style={[
-                      styles.card,
-                      isSelected && styles.cardSelected 
-                    ]}
-                  >
-                    <Image 
-                      source={{ uri: item.icon }} 
+                  {/* 🌟 關鍵修改: 增加一個 Wrapper，並設定 alignItems: 'center' 讓勾勾水平居中 */}
+                  <View style={styles.cardVisualWrapper}>
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={() => onToggleBrand(item.brand)}
                       style={[
-                        styles.cardImage,
-                        // 🌟 移除原本調低透明度的邏輯，保持 Logo 100% 清晰
-                      ]} 
-                    />
+                        styles.card,
+                        // 🌟 border 在下方樣式表中已移除
+                        isSelected && styles.cardSelected 
+                      ]}
+                    >
+                      <Image 
+                        source={{ uri: item.icon }} 
+                        style={styles.cardImage} 
+                      />
+                    </TouchableOpacity>
                     
-                    {/* 🌟 核心修改：使用 LinearGradient 模擬玻璃質感 */}
+                    {/* 🌟 粉色液態玻璃勾勾，移到 TouchableOpacity 外面，防止被 overflow:hidden 切掉 */}
                     {isSelected && (
                       <LinearGradient
-                        // 使用對角線漸層模擬玻璃反光
                         colors={[
-                          'rgba(255, 255, 255, 0.2)', // 右上角高光
-                          'rgba(234, 128, 252, 0.15)', // 中間淡淡紫色
-                          'rgba(0, 0, 0, 0.2)',        // 左下角細微壓暗
+                          'rgba(255, 204, 255, 0.95)', // 左上角高光
+                          'rgba(234, 128, 252, 0.85)', // 中間粉紫主色
+                          'rgba(190, 80, 210, 0.9)',   // 右下角暗部
                         ]}
-                        start={[0.1, 0.1]} // 渐变开始点
-                        end={[0.9, 0.9]}   // 渐变结束点
-                        style={styles.selectedOverlay}
+                        start={[0.1, 0.1]}
+                        end={[0.9, 0.9]}
+                        // 🌟 bottom 設定為 -10
+                        style={styles.checkmarkContainer}
                       >
                         <Ionicons 
                           name="checkmark" 
-                          size={CARD_WIDTH * 0.45} // 打勾尺寸不變，垂直居中
-                          color="white" 
+                          size={CARD_WIDTH * 0.15} 
+                          color="#FFFFFF" 
                         />
                       </LinearGradient>
                     )}
-                  </TouchableOpacity>
+                  </View>
                   
                   <Text 
                     style={[styles.tagText, isSelected && styles.activeTagText]} 
@@ -142,6 +143,7 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
               );
             })}
 
+            {/* 補齊奇數個時的排版 */}
             {currentItems.length % 2 !== 0 && (
               <View style={[styles.cardContainer, { backgroundColor: 'transparent' }]} />
             )}
@@ -153,7 +155,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 }
 
 const styles = StyleSheet.create({
-  // ... 其他 styles 保持不變 ...
   screenContainer: { flex: 1, backgroundColor: 'rgb(12, 12, 12)' },
   loadingContainer: {
     flex: 1,
@@ -228,22 +229,34 @@ const styles = StyleSheet.create({
   cardContainer: { 
     width: CARD_WIDTH, 
     marginBottom: COLUMN_GAP, 
-    alignItems: 'center' 
+    // 🌟 水平居中 Wrapper 和 Text
+    alignItems: 'center', 
+  },
+  // 🌟 新增的 Wrapper，負責水平對齊勾勾
+  cardVisualWrapper: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative', // 讓勾勾可以相對它進行絕對定位
+    // 這裡预設為 visible，所以勾勾超出 bottom 時不會被切掉
   },
   card: { 
     width: CARD_WIDTH, 
     height: CARD_WIDTH, 
     borderRadius: CARD_WIDTH * RATIO_RADIUS, 
     backgroundColor: '#1C1C1E', 
-    overflow: 'hidden',
+    overflow: 'hidden', // 🌟 保持 hidden 讓圖片有圓角，且不被 selected border 影響大小
     borderWidth: 2,
     borderColor: 'transparent',
-    // 確保漸層和 Ionicons 能在 card 中間對齊
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardSelected: {
-    borderColor: '#EA80FC',
+    // 🌟 移除 Border
+    borderWidth: 0,
+    // 雖然 border 沒了，但為了保持原本卡片佔用的空間不變，
+    // 可能需要手動調整邊距，不過看起來這裡不需要，直接設 0 即可。
   },
   cardImage: { 
     width: '100%', 
@@ -260,14 +273,30 @@ const styles = StyleSheet.create({
     fontWeight: '600', 
     textAlign: 'center', 
     letterSpacing: 0.5,
-    marginTop: 11, 
+    marginTop: 16, // 🌟 勾勾下移了，所以文字間距加大一點點
     paddingHorizontal: 4, 
     width: '100%', 
   },
-  // 🌟 修改：selectedOverlay 變成滿版漸層容器
-  selectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
+  // 🌟 液態玻璃勾勾容器
+  checkmarkContainer: {
+    position: 'absolute', // 相對於 cardVisualWrapper 定位
+    bottom: -12,          // 🌟 距離 Wrapper 底部的距離 (超出卡片範圍)
+    width: CARD_WIDTH * 0.2, 
+    height: CARD_WIDTH * 0.2,
+    borderRadius: (CARD_WIDTH * 0.25) / 2, // 確保是完美的圓形
+    justifyContent: 'center', 
     alignItems: 'center',
+    
+    // 玻璃邊緣反光效果
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)', 
+    
+    // 增加陰影讓它有浮起來的立體感
+    shadowColor: '#EA80FC',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 5, // Android 陰影
+    zIndex: 30, // 確保在圖片上方
   }
 });

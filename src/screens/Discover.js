@@ -110,8 +110,19 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
-        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden' }, animatedStyle]}>
+        {/* ✨ 修改 1：加上 justifyContent 和 alignItems 讓縮小的照片能完美置中 */}
+        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }, animatedStyle]}>
+          
+          {/* ✨ 修改 2：背景層 - 滿版 cover 圖片 + 模糊效果 */}
+          <Image 
+            source={{ uri: card.img }} 
+            style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} 
+          />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+
+          {/* ✨ 修改 3：前景層 - 真正的商品照片 */}
           <Image source={{ uri: card.img }} style={styles.cardImage} />
+
         </Reanimated.View>
       </GestureDetector>
       
@@ -199,15 +210,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   };
 
   const handlePressCross = () => {
-    // 🌟 1. 擋下連續點擊：如果在動畫中，直接返回
     if (isButtonPressed.current) return; 
 
     isButtonPressed.current = true;
     if (lockTimeout.current) clearTimeout(lockTimeout.current);
-    // 🌟 2. 鎖定剛好 300 毫秒
     lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
 
-    // 🌟 3. 動畫總時長改為 150 + 150 = 300 毫秒，與鎖定時間完美吻合
     swipeX.value = withSequence(
       withTiming(-150, { duration: 150 }),
       withTiming(0, { duration: 150 })
@@ -216,15 +224,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   };
 
   const handlePressHeart = () => {
-    // 🌟 1. 擋下連續雙擊/點擊
     if (isButtonPressed.current) return; 
 
     isButtonPressed.current = true;
     if (lockTimeout.current) clearTimeout(lockTimeout.current);
-    // 🌟 2. 鎖定剛好 300 毫秒
     lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
 
-    // 🌟 3. 動畫總時長改為 150 + 150 = 300 毫秒，與鎖定時間完美吻合
     swipeX.value = withSequence(
       withTiming(150, { duration: 150 }),
       withTiming(0, { duration: 150 })
@@ -345,9 +350,12 @@ const styles = StyleSheet.create({
   swiperContainer: { flex: 1, zIndex: 1 },
   swiperRoot: { backgroundColor: 'transparent' },
   card: { width: width, height: height, backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
-  cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  
+  // ✨ 修改 4：把 width/height 設為 80%，等於左右各內縮 10%，並確保 zIndex 浮在最上層
+  cardImage: { width: '100%', height: '100%', resizeMode: 'contain', zIndex: 1 },
+  
   topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden', maxWidth: width*0.9 },
-  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14, textAlign: 'center' },
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
   fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
   fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20 },
