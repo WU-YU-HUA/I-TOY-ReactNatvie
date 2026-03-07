@@ -12,14 +12,12 @@ import {
   View
 } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
-import Svg, { Circle } from 'react-native-svg';
 
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, {
   interpolate,
   interpolateColor,
   runOnJS,
-  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -29,34 +27,16 @@ import Reanimated, {
 
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-
 const buttonSize = Math.round(width * 0.13); 
-const strokeWidth = 1; 
-const circleRadius = (buttonSize - strokeWidth) / 2;
-const centerCoord = buttonSize / 2;
 
-const ReanimatedCircle = Reanimated.createAnimatedComponent(Circle);
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
-
-const SvgGlassCircle = ({ animatedProps }) => (
-  <Svg height={buttonSize} width={buttonSize} style={styles.svgContainer}>
-    <ReanimatedCircle
-      cx={centerCoord}
-      cy={centerCoord}
-      r={circleRadius}
-      stroke="rgba(255, 255, 255, 0.1)" 
-      strokeWidth={strokeWidth}
-      animatedProps={animatedProps} 
-    />
-  </Svg>
-);
 
 const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  const springConfig = { damping: 25, stiffness: 100, overshootClamping: true};
+  const springConfig = { damping: 25, stiffness: 500, overshootClamping: true};
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -87,6 +67,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
+    .maxDistance(30)
     .onEnd(() => {
       if (onDoubleTap) {
         runOnJS(onDoubleTap)(); 
@@ -110,29 +91,32 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
-        {/* ✨ 修改 1：加上 justifyContent 和 alignItems 讓縮小的照片能完美置中 */}
-        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }, animatedStyle]}>
+        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
           
-          {/* ✨ 修改 2：背景層 - 滿版 cover 圖片 + 模糊效果 */}
+          {/* 背景模糊層 */}
           <Image 
             source={{ uri: card.img }} 
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} 
           />
-          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
-          {/* ✨ 修改 3：前景層 - 真正的商品照片 */}
-          <Image source={{ uri: card.img }} style={styles.cardImage} />
+          {/* 內容容器 */}
+          <View style={styles.contentContainer}>
+            {/* 圖片保持原始比例 contain，不設定固定高度讓它自適應 */}
+            <Image source={{ uri: card.img }} style={styles.cardImage} />
+            
+            {/* Tag 緊貼在 Image 組件渲染出的範圍下方 */}
+            {!!card.tag && (
+              <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
+                <Text numberOfLines={1} style={styles.tagText}>
+                  {card.tag}
+                </Text>
+              </Reanimated.View>
+            )}
+          </View>
 
         </Reanimated.View>
       </GestureDetector>
-      
-      {!!card.tag && (
-        <Reanimated.View style={[StyleSheet.absoluteFill, tagAnimatedStyle]} pointerEvents="box-none">
-          <BlurView intensity={50} tint="dark" style={styles.topGlassTag}>
-            <Text style={styles.tagText}>{card.tag}</Text>
-          </BlurView>
-        </Reanimated.View>
-      )}
     </View>
   );
 };
@@ -146,7 +130,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const swipeX = useSharedValue(0);
   const isButtonPressed = useRef(false); 
   const lockTimeout = useRef(null); 
-  
   const isZoomingAnim = useSharedValue(0);
 
   const uiAnimatedStyle = useAnimatedStyle(() => ({
@@ -154,29 +137,30 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   }));
 
   const xButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.3], 'clamp') }]
-  }));
-  const xButtonProps = useAnimatedProps(() => ({
-    fill: interpolateColor(swipeX.value, [-150, 0], ['rgb(255, 0, 0)', 'rgba(12, 12, 12, 0.55)'])
+    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.3], 'clamp') }],
+    backgroundColor: interpolateColor(
+      swipeX.value,
+      [-150, 0],
+      ['rgb(255, 59, 48)', 'rgb(12, 12, 12)']
+    )
   }));
 
   const heartButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.3, 1.5], 'clamp') }]
-  }));
-  const heartButtonProps = useAnimatedProps(() => ({
-    fill: interpolateColor(swipeX.value, [0, 150], ['rgba(12, 12, 12, 0.55)', 'rgb(234, 128, 252)'])
+    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.3, 1.5], 'clamp') }],
+    backgroundColor: interpolateColor(
+      swipeX.value,
+      [0, 150],
+      ['rgba(12, 12, 12, 0.55)', 'rgb(234, 128, 252)']
+      )
   }));
 
   const fetchData = async () => {
     setIsLoading(true);
     setIsSwipedAll(false);
-    
     try {
       const params = new URLSearchParams();
-      if (selectedBrands && selectedBrands.size > 0) {
-        selectedBrands.forEach(brand => {
-          params.append('brands', brand);
-        });
+      if (selectedBrands?.size > 0) {
+        selectedBrands.forEach(brand => params.append('brands', brand));
       }
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
       const response = await fetch(url);
@@ -204,36 +188,26 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   const handleSwiped = (cardIndex) => {
     setCurrentIndex(cardIndex + 1);
-    if (!isButtonPressed.current) {
-      swipeX.value = 0; 
-    }
+    if (!isButtonPressed.current) swipeX.value = 0;
   };
 
   const handlePressCross = () => {
     if (isButtonPressed.current) return; 
-
     isButtonPressed.current = true;
     if (lockTimeout.current) clearTimeout(lockTimeout.current);
     lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
 
-    swipeX.value = withSequence(
-      withTiming(-150, { duration: 150 }),
-      withTiming(0, { duration: 150 })
-    );
+    swipeX.value = withSequence(withTiming(-150, { duration: 150 }), withTiming(0, { duration: 150 }));
     setTimeout(() => swiperRef.current?.swipeLeft(), 20);
   };
 
   const handlePressHeart = () => {
     if (isButtonPressed.current) return; 
-
     isButtonPressed.current = true;
     if (lockTimeout.current) clearTimeout(lockTimeout.current);
     lockTimeout.current = setTimeout(() => { isButtonPressed.current = false; }, 300);
 
-    swipeX.value = withSequence(
-      withTiming(150, { duration: 150 }),
-      withTiming(0, { duration: 150 })
-    );
+    swipeX.value = withSequence(withTiming(150, { duration: 150 }), withTiming(0, { duration: 150 }));
     setTimeout(() => swiperRef.current?.swipeRight(), 20);
   };
 
@@ -249,9 +223,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     return (
       <View style={[styles.screenContainer, styles.center]}>
         <Ionicons name="layers-outline" size={width * 0.15} color="#666" />
-        <Text style={styles.errorText}>
-            {cards.length === 0 ? '目前沒有商品資料' : '商品已瀏覽完畢'}
-        </Text>
+        <Text style={styles.errorText}>{cards.length === 0 ? '目前沒有商品資料' : '商品已瀏覽完畢'}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
             <Text style={styles.retryText}>重新載入</Text>
             <Ionicons name="refresh" size={width * 0.045} color="white" style={{ marginLeft: 5 }} />
@@ -271,16 +243,8 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             onSwiped={handleSwiped}
             onSwipedAll={() => setIsSwipedAll(true)}
             onSwipedRight={(idx) => onSave(cards[idx])}
-            onSwiping={(x) => { 
-              if (!isButtonPressed.current) {
-                swipeX.value = x; 
-              }
-            }} 
-            onSwipedAborted={() => {
-              if (!isButtonPressed.current) {
-                swipeX.value = withSpring(0, { damping: 20, stiffness: 100 });
-              }
-            }}
+            onSwiping={(x) => { if (!isButtonPressed.current) swipeX.value = x; }} 
+            onSwipedAborted={() => { if (!isButtonPressed.current) swipeX.value = withSpring(0); }}
             horizontalSwipe={!isZooming} 
             stackSize={2}
             stackScale={0}
@@ -292,53 +256,35 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             containerStyle={styles.swiperRoot}
             disableTopSwipe
             disableBottomSwipe
-            renderCard={(card) => {
-              if (!card) return null;
-              return (
-                <ZoomableCard 
-                  card={card} 
-                  setIsZooming={setIsZooming} 
-                  isZoomingAnim={isZoomingAnim}
-                  onDoubleTap={handlePressHeart} 
-                />
-              );
-            }}
+            renderCard={(card) => card ? (
+              <ZoomableCard 
+                card={card} 
+                setIsZooming={setIsZooming} 
+                isZoomingAnim={isZoomingAnim}
+                onDoubleTap={handlePressHeart} 
+              />
+            ) : null}
           />
         </View>
 
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, {zIndex: 20}]} pointerEvents="box-none">
-          
-          <ReanimatedTouchableOpacity 
-            style={[styles.fixedCloseWrapper, xButtonStyle]}
-            onPress={handlePressCross}
-          >
-            <SvgGlassCircle animatedProps={xButtonProps} />
-            <View style={styles.iconOverlay}>
-              <Ionicons name="close" size={width * 0.08} color="#FFFFFF" />
-            </View>
+          <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
+            <Ionicons name="close" size={width * 0.08} color="#FFFFFF" />
           </ReanimatedTouchableOpacity>
           
-          <ReanimatedTouchableOpacity 
-            style={[styles.fixedHeartWrapper, heartButtonStyle]}
-            onPress={handlePressHeart}
-          >
-            <SvgGlassCircle animatedProps={heartButtonProps} />
-            <View style={styles.iconOverlay}>
-              <Ionicons name="heart-outline" size={width * 0.075} color="white" />
-            </View>
+          <ReanimatedTouchableOpacity style={[styles.fixedHeartWrapper, heartButtonStyle]} onPress={handlePressHeart}>
+            <Ionicons name="heart-outline" size={width * 0.075} color="#FFFFFF" />
           </ReanimatedTouchableOpacity>
 
           <TouchableOpacity 
             onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
             style={styles.fixedBuyNowWrapper}
           >
-            <BlurView intensity={50} tint="dark" style={styles.buyNowGlassButton}>
+            <View style={styles.buyNowSolidButton}>
               <Text style={styles.buyNowText}>馬上購買</Text>
-            </BlurView>
+            </View>
           </TouchableOpacity>
-
         </Reanimated.View>
-
       </View>
     </GestureHandlerRootView>
   );
@@ -349,21 +295,48 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   swiperContainer: { flex: 1, zIndex: 1 },
   swiperRoot: { backgroundColor: 'transparent' },
-  card: { width: width, height: height, backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
+  card: { width: width, height: height, backgroundColor: '#2C2C2E', borderRadius: width * 0.09, overflow: 'hidden' },
   
-  // ✨ 修改 4：把 width/height 設為 80%，等於左右各內縮 10%，並確保 zIndex 浮在最上層
-  cardImage: { width: '100%', height: '100%', resizeMode: 'contain', zIndex: 1 },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'flex-start', // 垂直置中整組內容
+    alignItems: 'center',
+    width: '100%',
+    paddingTop: height*0.22
+  },
+
+  cardImage: { 
+    width: width,            // 寬度填滿，讓 contain 決定高度
+    aspectRatio: 1,          // 假設照片是正方形，若不固定比例則會由圖片資源決定
+    maxHeight: height * 0.6, // 防止圖片過大擠壓到標籤
+    resizeMode: 'contain'
+  },
   
-  topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.06, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden', maxWidth: width*0.9 },
-  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14, textAlign: 'center' },
+  tagWrapper: { 
+    marginTop: 12,            // 緊貼照片下方的間距
+    paddingHorizontal: 15,
+    width: '100%',
+    alignItems: 'center'
+  },
+  
+  tagText: { 
+    color: '#FFFFFF', 
+    fontWeight: '600', 
+    fontSize: 16, 
+    textAlign: 'center', 
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4 
+  },
+  
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20 },
-  buyNowGlassButton: { backgroundColor: 'rgba(12, 12, 12, 0.25)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09, overflow: 'hidden' },
-  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '600' },
-  svgContainer: { position: 'absolute' },
-  iconOverlay: { width: buttonSize, height: buttonSize, justifyContent: 'center', alignItems: 'center' },
-  errorText: { color: '#888', marginTop: height * 0.012, fontSize: Math.max(14, width * 0.04), marginBottom: height * 0.025 },
-  retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: width * 0.03, borderRadius: width * 0.05, alignItems: 'center' },
-  retryText: { color: 'white', fontWeight: '500', fontSize: Math.max(12, width * 0.035) },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  
+  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
+  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
+  
+  errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
+  retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
+  retryText: { color: 'white', fontWeight: '500' },
 });

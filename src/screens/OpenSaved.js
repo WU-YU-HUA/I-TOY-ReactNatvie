@@ -14,7 +14,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  const springConfig = { damping: 25, stiffness: 100, overshootClamping: true}; // overshootClamping: true 過於回彈問題
+  const springConfig = { damping: 25, stiffness: 500, overshootClamping: true}; // overshootClamping: true 過於回彈問題
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
