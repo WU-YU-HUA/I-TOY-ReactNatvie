@@ -52,3 +52,9 @@ Join our community of developers creating universal apps.
 
 # NPM Download
 https://nodejs.org/
+
+# Upload to Apple
+eas login
+eas build --platform ios
+eas submit --platform ios
+更改build Number
