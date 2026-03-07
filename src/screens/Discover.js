@@ -150,7 +150,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
-      ['rgba(12, 12, 12, 0.55)', 'rgb(234, 128, 252)']
+      ['rgb(12, 12, 12)', 'rgb(234, 128, 252)']
       )
   }));
 

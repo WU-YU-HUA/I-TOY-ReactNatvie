@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GlassView } from 'expo-glass-effect'; // 🌟 使用 GlassView
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, // 🌟 新增 ActivityIndicator 用於載入畫面
+  ActivityIndicator,
   Animated,
   Dimensions,
   PanResponder,
@@ -15,9 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// 🌟 引入 AsyncStorage
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import CategoryScreen from './Category';
 import DiscoverScreen from './Discover';
 import OpenSaved from './OpenSaved';
@@ -25,9 +23,9 @@ import SavedScreen from './Saved';
 
 const { width, height } = Dimensions.get('window');
 
-const NAV_WIDTH = width * 0.8; 
-const PADDING = width * 0.01; 
-const TAB_WIDTH = (NAV_WIDTH - (PADDING * 2)) / 3; 
+const NAV_WIDTH = width * 0.8;
+const PADDING = width * 0.01;
+const TAB_WIDTH = (NAV_WIDTH - (PADDING * 2)) / 3;
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
 const TABS = [
@@ -41,20 +39,18 @@ export default function App() {
   const [savedItems, setSavedItems] = useState([]);
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  
+
   const [openedItem, setOpenedItem] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
 
   const [selectedBrands, setSelectedBrands] = useState(new Set());
-  // 🌟 新增：記錄 AsyncStorage 是否讀取完成
   const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
-  
+
   const [categories, setCategories] = useState([]);
 
-  // 🌟 App 啟動時讀取儲存的品牌
   useEffect(() => {
     const loadSelectedBrands = async () => {
       try {
@@ -65,11 +61,10 @@ export default function App() {
       } catch (error) {
         console.error('讀取品牌設定失敗:', error);
       } finally {
-        // 無論成功或失敗，都標記為載入完成，釋放 DiscoverScreen
         setIsBrandsLoaded(true);
       }
     };
-    
+
     loadSelectedBrands();
   }, []);
 
@@ -79,14 +74,13 @@ export default function App() {
         const response = await fetch(`${API_URL}/api/firebase/categories/`);
         const json = await response.json();
         setCategories(json);
-      } catch (error) { 
-        console.error(error); 
+      } catch (error) {
+        console.error(error);
       }
     };
     fetchCategories();
   }, []);
 
-  // 🌟 切換品牌時，同步儲存進 AsyncStorage
   const toggleBrand = (brandName) => {
     setSelectedBrands((prevSet) => {
       const newSet = new Set(prevSet);
@@ -95,10 +89,10 @@ export default function App() {
       } else {
         newSet.add(brandName);
       }
-      
+
       AsyncStorage.setItem('@selected_brands', JSON.stringify(Array.from(newSet)))
         .catch(error => console.error('儲存品牌設定失敗:', error));
-        
+
       return newSet;
     });
   };
@@ -124,7 +118,7 @@ export default function App() {
       },
       onPanResponderMove: Animated.event(
         [null, { dx: translateX }],
-        { useNativeDriver: false } 
+        { useNativeDriver: false }
       ),
       onPanResponderRelease: (evt, gestureState) => {
         translateX.flattenOffset();
@@ -139,7 +133,7 @@ export default function App() {
           toValue: targetPos,
           friction: 6,
           tension: 60,
-          useNativeDriver: false, 
+          useNativeDriver: false,
         }).start();
 
         lastOffset.current = targetPos;
@@ -182,14 +176,14 @@ export default function App() {
   const handleNextItem = () => {
     if (openItemIndex >= 0 && openItemIndex < currentList.length - 1) {
       setOpenedItem(currentList[openItemIndex + 1]);
-      setOriginLayout(null); 
+      setOriginLayout(null);
     }
   };
 
   const handlePrevItem = () => {
     if (openItemIndex > 0) {
       setOpenedItem(currentList[openItemIndex - 1]);
-      setOriginLayout(null); 
+      setOriginLayout(null);
     }
   };
 
@@ -200,46 +194,45 @@ export default function App() {
 
         <View style={styles.contentArea}>
           {activeTab === 'Discover' && (
-            // 🌟 讀取完成才顯示 DiscoverScreen，否則顯示載入畫面
             isBrandsLoaded ? (
-              <DiscoverScreen 
-                onSave={handleSave} 
-                cards={cards} 
+              <DiscoverScreen
+                onSave={handleSave}
+                cards={cards}
                 setCards={setCards}
                 currentIndex={currentIndex}
-                setCurrentIndex={setCurrentIndex} 
+                setCurrentIndex={setCurrentIndex}
                 selectedBrands={selectedBrands}
-              /> 
+              />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#EA80FC" />
               </View>
             )
-          )} 
-          
+          )}
+
           {activeTab === 'Saved' && (
-            <SavedScreen 
-              savedItems={savedItems} 
+            <SavedScreen
+              savedItems={savedItems}
               onOpenItem={handleOpenItem}
             />
           )}
 
           {activeTab === 'Category' && (
-            <CategoryScreen 
-              categories={categories} 
-              selectedBrands={selectedBrands} 
-              onToggleBrand={toggleBrand}     
+            <CategoryScreen
+              categories={categories}
+              selectedBrands={selectedBrands}
+              onToggleBrand={toggleBrand}
             />
           )}
         </View>
 
         {openedItem && (
           <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-            <OpenSaved 
+            <OpenSaved
               prevItemData={openItemIndex > 0 ? currentList[openItemIndex - 1] : null}
               nextItemData={openItemIndex >= 0 && openItemIndex < currentList.length - 1 ? currentList[openItemIndex + 1] : null}
-              itemData={openedItem} 
-              onClose={handleCloseItem} 
+              itemData={openedItem}
+              onClose={handleCloseItem}
               originLayout={originLayout}
               onRemoveSaved={handleRemoveSaved}
               onSave={handleSave}
@@ -248,12 +241,12 @@ export default function App() {
             />
           </View>
         )}
-        
+
         <LinearGradient
           colors={['rgba(12,12,12,0.9)', 'rgba(12,12,12,0.6)', 'transparent']}
           locations={[0, 0.5, 1]}
           style={styles.topGlobalGradient}
-          pointerEvents="none" 
+          pointerEvents="none"
         />
         <LinearGradient
           colors={['transparent', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0.9)']}
@@ -261,28 +254,43 @@ export default function App() {
           style={styles.bottomGlobalGradient}
           pointerEvents="none"
         />
-        
+
         <View style={styles.navContainer} pointerEvents="auto">
-          <BlurView intensity={60} tint="dark" style={styles.bottomGlassNav} {...panResponder.panHandlers}>
-            <Animated.View style={[styles.slidingBackground, { width: TAB_WIDTH, transform: [{ translateX }] }]} />
+          {/* 🌟 底部導航欄改用 GlassView 並套用 PanResponder */}
+          <GlassView
+            intensity={40}
+            tint="dark"
+            style={styles.bottomGlassNav}
+            {...panResponder.panHandlers}
+          >
+            {/* 🌟 滑動背景改為玻璃效果 */}
+            <Animated.View style={[styles.slidingWrapper, { width: TAB_WIDTH, transform: [{ translateX }] }]}>
+              <GlassView
+                intensity={50} // 調整玻璃的模糊強度
+                tint="light"   // 讓滑塊比底部的深色玻璃亮一點
+                style={styles.slidingGlass}
+              />
+            </Animated.View>
+
             {TABS.map((tab, index) => {
               const isActive = activeTab === tab.id;
               const targetPos = index * TAB_WIDTH;
               const scale = translateX.interpolate({
                 inputRange: [targetPos - TAB_WIDTH, targetPos, targetPos + TAB_WIDTH],
-                outputRange: [1, 1.3, 1], extrapolate: 'clamp',
+                outputRange: [1, 1.2, 1],
+                extrapolate: 'clamp',
               });
 
               return (
                 <TouchableOpacity key={tab.id} style={styles.navItem} onPress={() => handleTabPress(tab.id, index)} activeOpacity={1}>
                   <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
-                    <Ionicons name={isActive ? tab.activeIcon : tab.inactiveIcon} size={width * 0.055} color={isActive ? '#EA80FC' : '#FFFFFF'} />
+                    <Ionicons name={isActive ? tab.activeIcon : tab.inactiveIcon} size={width * 0.055} color={isActive ? '#EA80FC' : 'rgba(255,255,255,0.7)'} />
                     <Text style={[styles.navText, isActive && styles.activeNavText]}>{tab.label}</Text>
                   </Animated.View>
                 </TouchableOpacity>
               );
             })}
-          </BlurView>
+          </GlassView>
         </View>
       </View>
     </SafeAreaProvider>
@@ -295,9 +303,40 @@ const styles = StyleSheet.create({
   topGlobalGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: height * 0.1, zIndex: 50 },
   bottomGlobalGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.15, zIndex: 50 },
   navContainer: { position: 'absolute', bottom: height * 0.04, width: '100%', alignItems: 'center', zIndex: 100 },
-  bottomGlassNav: { width: NAV_WIDTH, flexDirection: 'row', backgroundColor: 'rgba(12, 12, 12, 0.6)', borderTopWidth: 1, borderBottomWidth: 1, borderLeftWidth: 0.2, borderRightWidth: 0.2, borderTopColor: 'rgba(255, 255, 255, 0.15)', borderBottomColor: 'rgba(255, 255, 255, 0.04)', borderLeftColor: 'rgba(255, 255, 255, 0.05)', borderRightColor: 'rgba(255, 255, 255, 0.05)', padding: PADDING, borderRadius: 100, overflow: 'hidden', alignItems: 'center' },
-  slidingBackground: { position: 'absolute', top: PADDING, left: PADDING, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderRadius: 100 },
-  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: height * 0.012, zIndex: 2 },
-  navText: { fontSize: Math.max(10, width * 0.03), marginTop: height * 0.003, color: 'rgba(255, 255, 255, 1)', fontWeight: '500' },
-  activeNavText: { color: '#EA80FC', fontWeight: '500' },
+
+  // 🌟 GlassView 樣式調整
+  bottomGlassNav: {
+    width: NAV_WIDTH,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: PADDING,
+    borderRadius: 40,
+    overflow: 'hidden',
+    alignItems: 'center'
+  },
+
+  // 🌟 滑動背景的外層動畫容器
+  slidingWrapper: {
+    position: 'absolute',
+    top: PADDING,
+    bottom: PADDING, // 用 bottom 確保高度跟 TabBar 內距完美貼合
+    left: PADDING,
+    borderRadius: 30,
+    overflow: 'hidden', // 確保玻璃效果不會漏出圓角外
+  },
+
+  // 🌟 滑動玻璃的本體樣式
+  slidingGlass: {
+    flex: 1,
+    backgroundColor: 'rgba(234, 128, 252, 0.2)', // 保留粉紫色，帶有透明度
+    borderWidth: 1,
+    borderColor: 'rgba(234, 128, 252, 0.4)',     // 加上一點邊框反光感
+    borderRadius: 30,
+  },
+
+  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: height * 0.015, zIndex: 2 },
+  navText: { fontSize: Math.max(10, width * 0.028), marginTop: 4, color: 'rgba(255, 255, 255, 0.6)', fontWeight: '500' },
+  activeNavText: { color: '#EA80FC', fontWeight: '700' },
 });
