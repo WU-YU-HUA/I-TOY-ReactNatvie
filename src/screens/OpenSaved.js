@@ -7,14 +7,14 @@ import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, wit
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13); 
-const GAP = width*0.1 // 🌟 卡片之間的黑色間距寬度
+const GAP = width * 0.1; 
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  const springConfig = { damping: 25, stiffness: 500, overshootClamping: true}; // overshootClamping: true 過於回彈問題
+  const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -49,30 +49,41 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
   const tagAnimatedStyle = useAnimatedStyle(() => {
     if (!isActive || !screenAnim || !isZoomingAnim) return { opacity: 1 };
+    // 只有在全屏展開且沒有在縮放時才顯示 Tag
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
     return { opacity: isVisible * (1 - isZoomingAnim.value) };
   });
 
-  const content = (
+  return (
     <View style={styles.card}>
-      <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden' }, isActive ? animatedStyle : {}]}>
-        <Image source={{ uri: card.img }} style={styles.cardImage} />
-      </Reanimated.View>
-      
-      {!!card.tag && (
-        <Reanimated.View style={[StyleSheet.absoluteFill, tagAnimatedStyle]} pointerEvents="box-none">
-          <BlurView intensity={50} tint="dark" style={styles.topGlassTag}>
-            <Text style={styles.tagText}>{card.tag}</Text>
-          </BlurView>
-        </Reanimated.View>
-      )}
-    </View>
-  );
+      <GestureDetector gesture={isActive ? composedGesture : Gesture.Tap()}>
+        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
+          
+          {/* 1. 背景模糊層 (與 Discover.js 一致) */}
+          <Image 
+            source={{ uri: card.img }} 
+            style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} 
+          />
+          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
-  return isActive ? (
-    <GestureDetector gesture={composedGesture}>{content}</GestureDetector>
-  ) : (
-    content
+          {/* 2. 內容容器 */}
+          <View style={styles.contentContainer}>
+            {/* 圖片保持原始比例 contain */}
+            <Image source={{ uri: card.img }} style={styles.cardImage} />
+            
+            {/* 3. Tag 緊貼在圖片下方 */}
+            {!!card.tag && (
+              <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
+                <Text numberOfLines={1} style={styles.tagText}>
+                  {card.tag}
+                </Text>
+              </Reanimated.View>
+            )}
+          </View>
+
+        </Reanimated.View>
+      </GestureDetector>
+    </View>
   );
 };
 
@@ -85,12 +96,10 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   const swipeTranslateX = useSharedValue(0); 
   const isZoomingAnim = useSharedValue(0); 
 
-  // 🌟 1. 負責打開卡片時的「放大動畫」(你剛剛不小心刪掉的就是這段)
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
   }, []);
 
-  // 🌟 2. 負責切換照片時的「完美歸零」(用 useLayoutEffect 解決警告與閃爍)
   useLayoutEffect(() => {
     swipeTranslateX.value = 0;
   }, [itemData]);
@@ -143,26 +152,21 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
     .onEnd((event) => {
       if (event.translationX < -width * 0.15 || event.velocityX < -600) {
         if (onNext) {
-          // 🌟 成功切換下一張
           swipeTranslateX.value = withTiming(-(width + GAP), { duration: 250 }, () => {
             runOnJS(onNext)();
           });
         } else {
-          // 🌟 無下一張時沉穩回彈
           swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true }); 
         }
       } else if (event.translationX > width * 0.15 || event.velocityX > 600) {
         if (onPrev) {
-          // 🌟 成功切換上一張
           swipeTranslateX.value = withTiming(width + GAP, { duration: 250 }, () => {
             runOnJS(onPrev)();
           });
         } else {
-          // 🌟 無上一張時沉穩回彈
           swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true });
         }
       } else {
-        // 🌟 滑動距離不夠放棄切換，沉穩回彈
         swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true });
       }
     });
@@ -257,7 +261,6 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
           </Reanimated.View>
 
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
-            
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
               <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
@@ -276,12 +279,11 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
             
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
-                <BlurView intensity={50} tint="dark" style={styles.buyNowGlassButton}>
+                <View style={styles.buyNowSolidButton}>
                   <Text style={styles.buyNowText}>馬上購買</Text>
-                </BlurView>
+                </View>
               </TouchableOpacity>
             )}
-            
           </Reanimated.View>
         </Reanimated.View>
       </GestureDetector>
@@ -293,12 +295,42 @@ const styles = StyleSheet.create({
   rootOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 90 },
   screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
   card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
-  cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  topGlassTag: { position: 'absolute', bottom: height * 0.23, alignSelf: 'center', zIndex: 10, backgroundColor: 'rgba(12, 12, 12, 0.15)', paddingHorizontal: width * 0.04, paddingVertical: height * 0.012, borderRadius: 100, overflow: 'hidden', maxWidth: width * 0.9 },
-  tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14, textAlign: 'center' },
+  
+  // 與 Discover.js 一致的佈局
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'flex-start', 
+    alignItems: 'center',
+    width: '100%',
+    paddingTop: height * 0.22 // 與 Discover.js 相同的頂部間距
+  },
+  cardImage: { 
+    width: width,
+    aspectRatio: 1,
+    maxHeight: height * 0.6,
+    resizeMode: 'contain'
+  },
+  tagWrapper: { 
+    marginTop: 12,
+    paddingHorizontal: 15,
+    width: '100%',
+    alignItems: 'center'
+  },
+  tagText: { 
+    color: '#FFFFFF', 
+    fontWeight: '600', 
+    fontSize: 16, 
+    textAlign: 'center', 
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4 
+  },
+
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
-  buyNowGlassButton: { backgroundColor: 'rgba(12, 12, 12, 0.25)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09, overflow: 'hidden' },
-  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '600' },
+  // 改為與 Discover.js 相同的實色按鈕
+  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
+  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
+  
   fixedBackWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
   fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20 },
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
