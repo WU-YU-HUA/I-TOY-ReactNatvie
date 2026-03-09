@@ -46,12 +46,12 @@ export default function GlobalUIWrapper({ children }) {
         style={styles.topGlobalGradient}
         pointerEvents="none"
       />
-      <LinearGradient
+      {/* <LinearGradient
         colors={['transparent', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0.9)']}
         locations={[0, 0.4, 1]}
         style={styles.bottomGlobalGradient}
         pointerEvents="none"
-      />
+      /> */}
     </View>
   );
 }

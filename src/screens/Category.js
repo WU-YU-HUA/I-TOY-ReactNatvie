@@ -46,17 +46,17 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
   return (
     <View style={styles.screenContainer}>
-      
-      <LinearGradient 
-        colors={['rgba(12,12,12,0.95)', 'rgba(12,12,12,0.85)', 'rgba(12,12,12,0)']} 
-        locations={[0, 0.7, 1]} 
+
+      <LinearGradient
+        colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']}
+        locations={[0, 0.5, 1]}
         style={styles.headerBackground}
-        pointerEvents="none" 
+        pointerEvents="none"
       />
 
       <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
         <Text style={styles.savedTitle}>商品分類</Text>
-        
+
         <View style={styles.headerRow}>
           <Text style={styles.categorySubtitle}>共 {currentItems.length} 個品牌</Text>
 
@@ -64,8 +64,8 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
             {Object.keys(categories).map((key) => {
               const isActive = activeCategory === key;
               return (
-                <TouchableOpacity 
-                  key={key} 
+                <TouchableOpacity
+                  key={key}
                   style={[styles.tabButton, isActive && styles.activeTabButton]}
                   onPress={() => setActiveCategory(key)}
                   activeOpacity={0.7}
@@ -80,8 +80,8 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
         </View>
       </View>
 
-      <ScrollView 
-        style={{ flex: 1 }} 
+      <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -92,24 +92,24 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
               return (
                 <View key={item.brand + index} style={styles.cardContainer}>
-                  
+
                   {/* 🌟 關鍵修改: 增加一個 Wrapper，並設定 alignItems: 'center' 讓勾勾水平居中 */}
                   <View style={styles.cardVisualWrapper}>
-                    <TouchableOpacity 
-                      activeOpacity={0.8} 
+                    <TouchableOpacity
+                      activeOpacity={0.8}
                       onPress={() => onToggleBrand(item.brand)}
                       style={[
                         styles.card,
                         // 🌟 border 在下方樣式表中已移除
-                        isSelected && styles.cardSelected 
+                        isSelected && styles.cardSelected
                       ]}
                     >
-                      <Image 
-                        source={{ uri: item.icon }} 
-                        style={styles.cardImage} 
+                      <Image
+                        source={{ uri: item.icon }}
+                        style={styles.cardImage}
                       />
                     </TouchableOpacity>
-                    
+
                     {/* 🌟 粉色液態玻璃勾勾，移到 TouchableOpacity 外面，防止被 overflow:hidden 切掉 */}
                     {isSelected && (
                       <LinearGradient
@@ -123,22 +123,22 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                         // 🌟 bottom 設定為 -10
                         style={styles.checkmarkContainer}
                       >
-                        <Ionicons 
-                          name="checkmark" 
-                          size={CARD_WIDTH * 0.15} 
-                          color="#FFFFFF" 
+                        <Ionicons
+                          name="checkmark"
+                          size={CARD_WIDTH * 0.15}
+                          color="#FFFFFF"
                         />
                       </LinearGradient>
                     )}
                   </View>
-                  
-                  <Text 
-                    style={[styles.tagText, isSelected && styles.activeTagText]} 
+
+                  <Text
+                    style={[styles.tagText, isSelected && styles.activeTagText]}
                     numberOfLines={2}
                   >
                     {item.brand}
                   </Text>
-                  
+
                 </View>
               );
             })}
@@ -162,75 +162,75 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerBackground: { 
-    position: 'absolute', 
-    top: 0, 
-    width: '100%', 
-    height: Platform.OS === 'ios' ? 170 : 150, 
-    zIndex: 10 
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    height: Platform.OS === 'ios' ? 170 : 150,
+    zIndex: 10
   },
   headerInteractiveContainer: {
     position: 'absolute',
     top: 0,
     width: '100%',
     zIndex: 20,
-    paddingTop: Platform.OS === 'ios' ? 80 : 60, 
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 25,
   },
-  savedTitle: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    color: '#FFF', 
+  savedTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
     marginBottom: 15
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between', 
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   categorySubtitle: {
-    fontSize: 14, 
+    fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
   },
   tabContainer: {
     flexDirection: 'row',
-    gap: 12, 
+    gap: 12,
   },
   tabButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   activeTabButton: {
-    backgroundColor: '#EA80FC', 
+    backgroundColor: '#EA80FC',
   },
   tabText: {
     color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14, 
+    fontSize: 14,
     fontWeight: '600',
   },
   activeTabText: {
-    color: '#FFFFFF', 
+    color: '#FFFFFF',
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 170 : 150, 
-    paddingBottom: 130, 
+    paddingTop: Platform.OS === 'ios' ? 170 : 150,
+    paddingBottom: 130,
   },
   categorySection: {
     marginBottom: 30,
   },
-  gridContainer: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: PADDING_HORIZONTAL 
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: PADDING_HORIZONTAL
   },
-  cardContainer: { 
-    width: CARD_WIDTH, 
-    marginBottom: COLUMN_GAP, 
+  cardContainer: {
+    width: CARD_WIDTH,
+    marginBottom: COLUMN_GAP,
     // 🌟 水平居中 Wrapper 和 Text
-    alignItems: 'center', 
+    alignItems: 'center',
   },
   // 🌟 新增的 Wrapper，負責水平對齊勾勾
   cardVisualWrapper: {
@@ -241,11 +241,11 @@ const styles = StyleSheet.create({
     position: 'relative', // 讓勾勾可以相對它進行絕對定位
     // 這裡预設為 visible，所以勾勾超出 bottom 時不會被切掉
   },
-  card: { 
-    width: CARD_WIDTH, 
-    height: CARD_WIDTH, 
-    borderRadius: CARD_WIDTH * RATIO_RADIUS, 
-    backgroundColor: '#1C1C1E', 
+  card: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
+    borderRadius: CARD_WIDTH * RATIO_RADIUS,
+    backgroundColor: '#1C1C1E',
     overflow: 'hidden', // 🌟 保持 hidden 讓圖片有圓角，且不被 selected border 影響大小
     borderWidth: 2,
     borderColor: 'transparent',
@@ -258,39 +258,39 @@ const styles = StyleSheet.create({
     // 雖然 border 沒了，但為了保持原本卡片佔用的空間不變，
     // 可能需要手動調整邊距，不過看起來這裡不需要，直接設 0 即可。
   },
-  cardImage: { 
-    width: '100%', 
-    height: '100%', 
-    resizeMode: 'contain' 
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain'
   },
   activeTagText: {
     color: '#EA80FC',
     fontWeight: 'bold',
   },
-  tagText: { 
-    color: 'rgba(255, 255, 255, 0.9)', 
-    fontSize: 12, 
-    fontWeight: '600', 
-    textAlign: 'center', 
+  tagText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
     letterSpacing: 0.5,
     marginTop: 16, // 🌟 勾勾下移了，所以文字間距加大一點點
-    paddingHorizontal: 4, 
-    width: '100%', 
+    paddingHorizontal: 4,
+    width: '100%',
   },
   // 🌟 液態玻璃勾勾容器
   checkmarkContainer: {
     position: 'absolute', // 相對於 cardVisualWrapper 定位
     bottom: -12,          // 🌟 距離 Wrapper 底部的距離 (超出卡片範圍)
-    width: CARD_WIDTH * 0.2, 
+    width: CARD_WIDTH * 0.2,
     height: CARD_WIDTH * 0.2,
     borderRadius: (CARD_WIDTH * 0.25) / 2, // 確保是完美的圓形
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
-    
+
     // 玻璃邊緣反光效果
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)', 
-    
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+
     // 增加陰影讓它有浮起來的立體感
     shadowColor: '#EA80FC',
     shadowOffset: { width: 0, height: 2 },
