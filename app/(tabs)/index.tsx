@@ -1,14 +1,35 @@
-// app/(tabs)/index.tsx
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-// 退兩層找到你的 i-toy.js
-import App from '../../src/screens/HomePage';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import DiscoverScreen from '../../src/screens/Discover';
+import { useAppContext } from '../../src/context/AppContext';
 
 export default function Index() {
+  const {
+    isBrandsLoaded,
+    cards,
+    setCards,
+    currentIndex,
+    setCurrentIndex,
+    selectedBrands,
+    handleSave,
+  } = useAppContext();
+
+  if (!isBrandsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: 'rgb(12, 12, 12)', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#EA80FC" />
+      </View>
+    );
+  }
+
   return (
-    // 包上這個，放大縮小功能才會動！
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <App />
-    </GestureHandlerRootView>
+    <DiscoverScreen
+      onSave={handleSave}
+      cards={cards}
+      setCards={setCards}
+      currentIndex={currentIndex}
+      setCurrentIndex={setCurrentIndex}
+      selectedBrands={selectedBrands}
+    />
   );
-}
+}
