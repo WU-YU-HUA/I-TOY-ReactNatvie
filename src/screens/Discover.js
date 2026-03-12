@@ -137,7 +137,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   }));
 
   const xButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.3], 'clamp') }],
+    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.0], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [-150, 0],
@@ -146,7 +146,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   }));
 
   const heartButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.3, 1.5], 'clamp') }],
+    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.0, 1.5], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
