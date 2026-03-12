@@ -60,4 +60,3 @@ eas submit --platform ios
 更改build Number
 
 # 各個檔案的內容
-src/context/AppContext.js --> 全域變數，HomePage

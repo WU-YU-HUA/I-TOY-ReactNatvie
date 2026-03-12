@@ -65,12 +65,15 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       translateY.value = withSpring(0, springConfig);
     });
 
+  // 修改雙擊邏輯：判斷點擊位置
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .maxDistance(30)
-    .onEnd(() => {
+    .onEnd((event) => {
       if (onDoubleTap) {
-        runOnJS(onDoubleTap)(); 
+        // 如果點擊位置在螢幕寬度的一半左邊，傳回 'left'，否則 'right'
+        const side = event.x < width / 2 ? 'left' : 'right';
+        runOnJS(onDoubleTap)(side); 
       }
     });
 
@@ -93,19 +96,15 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       <GestureDetector gesture={composedGesture}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
           
-          {/* 背景模糊層 */}
           <Image 
             source={{ uri: card.img }} 
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} 
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
-          {/* 內容容器 */}
           <View style={styles.contentContainer}>
-            {/* 圖片保持原始比例 contain，不設定固定高度讓它自適應 */}
             <Image source={{ uri: card.img }} style={styles.cardImage} />
             
-            {/* Tag 緊貼在 Image 組件渲染出的範圍下方 */}
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <Text numberOfLines={1} style={styles.tagText}>
@@ -211,6 +210,15 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     setTimeout(() => swiperRef.current?.swipeRight(), 20);
   };
 
+  // 處理雙擊分流邏輯
+  const handleDoubleTap = (side) => {
+    if (side === 'left') {
+      handlePressCross();
+    } else {
+      handlePressHeart();
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -261,7 +269,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                 card={card} 
                 setIsZooming={setIsZooming} 
                 isZoomingAnim={isZoomingAnim}
-                onDoubleTap={handlePressHeart} 
+                onDoubleTap={handleDoubleTap} 
               />
             ) : null}
           />
@@ -299,21 +307,21 @@ const styles = StyleSheet.create({
   
   contentContainer: {
     flex: 1,
-    justifyContent: 'flex-start', // 垂直置中整組內容
+    justifyContent: 'flex-start', 
     alignItems: 'center',
     width: '100%',
-    paddingTop: height*0.22
+    paddingTop: height * 0.22
   },
 
   cardImage: { 
-    width: width,            // 寬度填滿，讓 contain 決定高度
-    aspectRatio: 1,          // 假設照片是正方形，若不固定比例則會由圖片資源決定
-    maxHeight: height * 0.6, // 防止圖片過大擠壓到標籤
+    width: width, 
+    aspectRatio: 1, 
+    maxHeight: height * 0.6, 
     resizeMode: 'contain'
   },
   
   tagWrapper: { 
-    marginTop: 12,            // 緊貼照片下方的間距
+    marginTop: 12, 
     paddingHorizontal: 15,
     width: '100%',
     alignItems: 'center'
