@@ -48,6 +48,21 @@ export function AppProvider({ children }) {
     fetchCategories();
   }, [API_URL]);
 
+  useEffect(() => {
+    const loadSavedItems = async () => {
+      try {
+        const storedItems = await AsyncStorage.getItem('@saved_items');
+        if (storedItems !== null) {
+          setSavedItems(JSON.parse(storedItems));
+        }
+      } catch (error) {
+        console.error('讀取收藏清單失敗:', error);
+      }
+    };
+
+    loadSavedItems();
+  }, []);
+
   const [currentOpenList, setCurrentOpenList] = useState('cards'); // 'cards' or 'saved'
 
   // ... (toggleBrand, handleSave, handleRemoveSaved stay the same)
@@ -71,12 +86,20 @@ export function AppProvider({ children }) {
     setSavedItems((prevItems) => {
       const isExisted = prevItems.find((i) => i.img === item.img);
       if (isExisted) return prevItems;
-      return [item, ...prevItems];
+      const newItems = [item, ...prevItems];
+      AsyncStorage.setItem('@saved_items', JSON.stringify(newItems))
+        .catch(error => console.error('儲存收藏清單失敗:', error));
+      return newItems;
     });
   };
 
   const handleRemoveSaved = (itemToRemove) => {
-    setSavedItems((prevItems) => prevItems.filter((i) => i.img !== itemToRemove.img));
+    setSavedItems((prevItems) => {
+      const newItems = prevItems.filter((i) => i.img !== itemToRemove.img);
+      AsyncStorage.setItem('@saved_items', JSON.stringify(newItems))
+        .catch(error => console.error('儲存收藏清單失敗:', error));
+      return newItems;
+    });
   };
 
   const handleOpenItem = (item, layout, listType = 'cards') => {
