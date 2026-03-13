@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
+import DescriptionPanel from './Description';
 
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, {
@@ -125,6 +126,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const [isLoading, setIsLoading] = useState(false);
   const [isSwipedAll, setIsSwipedAll] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
+  const [isDescVisible, setIsDescVisible] = useState(false);
   const swiperRef = useRef(null);
 
   const swipeX = useSharedValue(0);
@@ -296,7 +298,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         </View>
 
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, { zIndex: 20 }]} pointerEvents="box-none">
-          <TouchableOpacity style={styles.fixedUpWrapper}>
+          <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(true)}>
             <Ionicons name="chevron-up" size={width * 0.08} color="#FFFFFF" />
           </TouchableOpacity>
 
@@ -321,6 +323,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             </View>
           </TouchableOpacity>
         </Reanimated.View>
+
+        <DescriptionPanel 
+          visible={isDescVisible} 
+          onClose={() => setIsDescVisible(false)} 
+          description={cards[currentIndex]?.description} 
+        />
       </View>
     </GestureHandlerRootView>
   );
