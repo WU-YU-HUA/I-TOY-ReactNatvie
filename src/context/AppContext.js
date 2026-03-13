@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const AppContext = createContext();
@@ -16,7 +17,7 @@ export function AppProvider({ children }) {
   const [categories, setCategories] = useState([]);
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-
+  // 讀取以選取的品牌
   useEffect(() => {
     const loadSelectedBrands = async () => {
       try {
@@ -33,7 +34,7 @@ export function AppProvider({ children }) {
 
     loadSelectedBrands();
   }, []);
-
+  // 去後端讀取所有品牌
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -47,7 +48,7 @@ export function AppProvider({ children }) {
     };
     fetchCategories();
   }, [API_URL]);
-
+  // 讀取最愛清單
   useEffect(() => {
     const loadSavedItems = async () => {
       try {
@@ -61,6 +62,10 @@ export function AppProvider({ children }) {
     };
 
     loadSavedItems();
+  }, []);
+  // 請求通知權限
+  useEffect(() => {
+    requestNotificationPermission();
   }, []);
 
   const [currentOpenList, setCurrentOpenList] = useState('cards'); // 'cards' or 'saved'
@@ -128,6 +133,33 @@ export function AppProvider({ children }) {
       setOpenedItem(currentList[openItemIndex - 1]);
       setOriginLayout(null);
     }
+  };
+  // 請求通知權限
+  const requestNotificationPermission = async () => {
+    // 1. 檢查目前的權限狀態
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    // 2. 如果狀態不是 "granted" (已授權)，就發起請求
+    // if (finalStatus !== 'granted') {
+    //   // 跳出我們自訂的警告視窗
+    //   Alert.alert(
+    //     '需要通知權限',
+    //     '您目前關閉了通知。若要接收重要訊息，請前往手機的「設定」中手動開啟通知權限。',
+    //     [
+    //       {
+    //         text: '下次再說',
+    //         style: 'cancel'
+    //       },
+    //       {
+    //         text: '前往設定',
+    //         // 點擊後直接打開手機的設定頁面 (並自動定位到你的 App)
+    //         onPress: () => Linking.openSettings()
+    //       }
+    //     ]
+    //   );
+    //   return
+    // }
   };
 
   return (
