@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
   },
   glassContainer: {
     marginLeft: width * 0.01,
-    marginTop: height * 0.06,
+    marginBottom: height * 0.02,
     width: width * 0.83, // 稍微縮小寬度，讓右側按鈕可以被點擊
-    height: height * 0.45,
+    height: height * 0.5,
     // 與 Discover.js 卡片相同的大小與圓角
     borderRadius: width * 0.09,
     overflow: 'hidden',

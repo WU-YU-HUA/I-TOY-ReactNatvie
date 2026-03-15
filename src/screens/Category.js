@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-// 🌟 引入 LinearGradient 來模擬玻璃反光質感
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
@@ -12,25 +11,19 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
 const { width } = Dimensions.get('window');
 const COLUMN_GAP = 15;
 const PADDING_HORIZONTAL = 20;
 const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
-const CATEGORY_LABELS = {
-  Female: '女裝',
-  Male: '男裝'
-};
-
 export default function CategoryScreen({ categories, selectedBrands, onToggleBrand }) {
   const [activeCategory, setActiveCategory] = useState(null);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
   useEffect(() => {
     if (categories && Object.keys(categories).length > 0 && !activeCategory) {
-      const keys = Object.keys(categories);
-      setActiveCategory(keys.includes('Female') ? 'Female' : keys[0]);
+      setActiveCategory('Female');
     }
   }, [categories]);
 
@@ -55,27 +48,29 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
       />
 
       <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
-        <Text style={styles.savedTitle}>商品分類</Text>
+        <Text style={styles.savedTitle}>品牌</Text>
 
         <View style={styles.headerRow}>
           <Text style={styles.categorySubtitle}>共 {currentItems.length} 個品牌</Text>
 
-          <View style={styles.tabContainer}>
-            {Object.keys(categories).map((key) => {
-              const isActive = activeCategory === key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.tabButton, isActive && styles.activeTabButton]}
-                  onPress={() => setActiveCategory(key)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.tabText, isActive && styles.activeTabText]}>
-                    {CATEGORY_LABELS[key] || key}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.filterContainer}>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setIsFilterExpanded(!isFilterExpanded)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.filterText}>篩選</Text>
+              <Ionicons
+                name={isFilterExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color="rgba(255, 255, 255, 0.6)"
+              />
+            </TouchableOpacity>
+
+            {isFilterExpanded && (
+              <View style={styles.filterDropdown}>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -110,25 +105,15 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                       />
                     </TouchableOpacity>
 
-                    {/* 🌟 粉色液態玻璃勾勾，移到 TouchableOpacity 外面，防止被 overflow:hidden 切掉 */}
+                    {/* 🌟 勾勾，移到 TouchableOpacity 外面，防止被 overflow:hidden 切掉 */}
                     {isSelected && (
-                      <LinearGradient
-                        colors={[
-                          'rgba(255, 204, 255, 0.95)', // 左上角高光
-                          'rgba(234, 128, 252, 0.85)', // 中間粉紫主色
-                          'rgba(190, 80, 210, 0.9)',   // 右下角暗部
-                        ]}
-                        start={[0.1, 0.1]}
-                        end={[0.9, 0.9]}
-                        // 🌟 bottom 設定為 -10
-                        style={styles.checkmarkContainer}
-                      >
+                      <View style={styles.checkmarkContainer}>
                         <Ionicons
                           name="checkmark"
                           size={CARD_WIDTH * 0.15}
-                          color="#FFFFFF"
+                          color="#000000"
                         />
-                      </LinearGradient>
+                      </View>
                     )}
                   </View>
 
@@ -192,26 +177,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.6)',
   },
-  tabContainer: {
-    flexDirection: 'row',
-    gap: 12,
+  filterContainer: {
+    position: 'relative',
+    zIndex: 30, // 確保下拉選單在最上層
   },
-  tabButton: {
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  activeTabButton: {
-    backgroundColor: '#EA80FC',
-  },
-  tabText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  filterText: {
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
     fontWeight: '600',
   },
-  activeTabText: {
-    color: '#FFFFFF',
+  filterDropdown: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: 8,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    paddingVertical: 8,
+    width: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  filterOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  filterOptionText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
   },
   scrollContent: {
     paddingTop: Platform.OS === 'ios' ? 170 : 150,
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
     resizeMode: 'contain'
   },
   activeTagText: {
-    color: '#EA80FC',
+    color: '#ffffff',
     fontWeight: 'bold',
   },
   tagText: {
@@ -277,7 +284,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     width: '100%',
   },
-  // 🌟 液態玻璃勾勾容器
+  // 🌟 勾勾容器
   checkmarkContainer: {
     position: 'absolute', // 相對於 cardVisualWrapper 定位
     bottom: -12,          // 🌟 距離 Wrapper 底部的距離 (超出卡片範圍)
@@ -286,17 +293,11 @@ const styles = StyleSheet.create({
     borderRadius: (CARD_WIDTH * 0.25) / 2, // 確保是完美的圓形
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#00ffff', // 單色青色背景
 
     // 玻璃邊緣反光效果
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.4)',
-
-    // 增加陰影讓它有浮起來的立體感
-    shadowColor: '#EA80FC',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 5, // Android 陰影
     zIndex: 30, // 確保在圖片上方
   }
 });

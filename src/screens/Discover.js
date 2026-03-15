@@ -6,6 +6,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Platform,
   Share,
   StyleSheet,
   Text,
@@ -103,6 +104,15 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
+          {/* <View pointerEvents="none" style={[styles.topLogoContainer, { top: 0 }]}>
+            {!!card.logo && (
+              <Image
+                source={{ uri: card.logo }}
+                style={styles.topLogo}
+              />
+            )}
+          </View> */}
+
           <View style={styles.contentContainer}>
             <Image source={{ uri: card.img }} style={styles.cardImage} />
             {!!card.tag && (
@@ -159,7 +169,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
-      ['rgb(12, 12, 12)', 'rgb(234, 128, 252)'] // 變成粉紫色背景
+      ['rgb(12, 12, 12)', 'rgb(0, 255, 255)'] // 變成粉紫色背景
     )
   }));
 
@@ -167,7 +177,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     color: interpolateColor(
       swipeX.value,
       [0, 150],
-      ['rgb(234, 128, 252)', '#000000']
+      ['rgb(0, 255, 255)', '#000000']
     )
   }));
 
@@ -189,6 +199,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         img: item.img,
         tag: item.tag,
         description: item.description,
+        brand: item.brand
       }));
 
       setCards(formData);
@@ -308,11 +319,13 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         </View>
 
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, { zIndex: 20 }]} pointerEvents="box-none">
-          <View pointerEvents="none" style={styles.topLogoContainer}>
-            <Image
-              source={{ uri: 'https://e-closet-backend.onrender.com/static/icon/AirSpace.jpg' }}
-              style={styles.topLogo}
-            />
+          <View style={styles.headerInteractiveContainer} pointerEvents="none">
+            <Text style={styles.savedTitle}>探索</Text>
+            {cards.length > 0 && (
+              <Text style={styles.categorySubtitle}>
+                {cards[currentIndex]?.brand || '載入中...'}
+              </Text>
+            )}
           </View>
 
           {/* 右下方按鈕群：由下而上分別是 Heart -> Share -> Up */}
@@ -361,19 +374,44 @@ const styles = StyleSheet.create({
   swiperRoot: { backgroundColor: 'transparent' },
   card: { width: width, height: height, backgroundColor: '#2C2C2E', borderRadius: width * 0.09, overflow: 'hidden' },
 
+  headerInteractiveContainer: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    zIndex: 20,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingHorizontal: 25,
+  },
+  savedTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    marginBottom: 22
+  },
+  categorySubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+
   contentContainer: {
     flex: 1,
     justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingTop: height * 0.3
+    paddingTop: height * 0.18
   },
 
   cardImage: {
     width: width,
-    aspectRatio: 1,
-    maxHeight: height * 0.6,
-    resizeMode: 'contain'
+    aspectRatio: 0.8, // 3:4比例，讓圖片更高
+    maxHeight: height * 0.7,
+    resizeMode: 'flex'
   },
 
   tagWrapper: {
@@ -421,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: buttonSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 12, 0.8)'
+    backgroundColor: 'rgba(12, 12, 12, 0.9)'
   },
   // 3. 最上層: Up (Share 上方)
   fixedUpWrapper: {
@@ -434,14 +472,14 @@ const styles = StyleSheet.create({
     borderRadius: buttonSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 12, 0.8)'
+    backgroundColor: 'rgba(12, 12, 12, 0.9)'
   },
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
 
-  topLogoContainer: { position: 'absolute', marginTop: height * 0.01, width: '100%', alignItems: 'center', zIndex: 100 },
-  topLogo: { width: width * 0.35, height: height * 0.35, resizeMode: 'contain'/*, right: width * 0.3*/ },
+  topLogoContainer: { position: 'absolute', marginTop: 0, width: '100%', alignItems: 'center', zIndex: 100 },
+  topLogo: { width: width * 0.35, height: height * 0.35, resizeMode: 'contain', left: width * 0.25 },
 
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },

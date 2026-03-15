@@ -51,11 +51,11 @@ export default function TabLayout() {
     <NativeTabs
       iconColor={{
         default: 'rgba(255, 255, 255, 0.7)',
-        selected: '#EA80FC',
+        selected: '#ffffff',
       }}
       labelStyle={{
         default: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 10, fontWeight: '500' },
-        selected: { color: '#EA80FC', fontSize: 10, fontWeight: '700' },
+        selected: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
       }}
       backgroundColor="rgba(25, 25, 25, 0.85)"
       blurEffect="systemMaterialDark"
@@ -80,6 +80,13 @@ export default function TabLayout() {
         options={{
           title: '分類',
           icon: { sf: 'square.grid.2x2' }
+        }}
+      />
+      <NativeTabs.Trigger
+        name="fixed"
+        options={{
+          title: '開發中',
+          icon: { sf: 'wrench.fill' }
         }}
       />
     </NativeTabs>

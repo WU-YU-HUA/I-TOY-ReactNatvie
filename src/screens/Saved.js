@@ -20,11 +20,11 @@ const SavedItemCard = ({ item, onOpenItem }) => {
 
   return (
     <View style={styles.savedItemContainer}>
-      <TouchableOpacity 
-        ref={itemRef} 
+      <TouchableOpacity
+        ref={itemRef}
         style={styles.savedItemCard}
         activeOpacity={0.8}
-        onPress={handlePress} 
+        onPress={handlePress}
       >
         <Image source={{ uri: item.img }} style={styles.savedItemImage} />
       </TouchableOpacity>
@@ -43,17 +43,17 @@ export default function SavedScreen({ savedItems = [], onOpenItem }) {
     <View style={styles.screenContainer}>
       <LinearGradient colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']} locations={[0, 0.5, 1]} style={styles.fullWidthHeader}>
         <View style={styles.headerContent}>
-          <Text style={styles.savedTitle}>我的收藏</Text>
+          <Text style={styles.savedTitle}>收藏</Text>
           <Text style={styles.savedSubtitle}>共 {savedItems.length} 個收藏</Text>
         </View>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {savedItems.map((item, index) => (
-          <SavedItemCard 
-            key={item.img + index} 
-            item={item} 
-            onOpenItem={onOpenItem} 
+          <SavedItemCard
+            key={item.img + index}
+            item={item}
+            onOpenItem={onOpenItem}
           />
         ))}
         {savedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   headerContent: { paddingTop: Platform.OS === 'ios' ? 80 : 60, paddingBottom: 30, paddingHorizontal: 25 },
   scrollContent: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 160, paddingBottom: 130 },
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: 0, marginBottom: 22 },
-  savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)'},
+  savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
   savedItemContainer: { width: CARD_WIDTH, marginBottom: COLUMN_GAP + 10 },
   savedItemCard: { width: CARD_WIDTH, height: CARD_WIDTH * 1.4, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: '#1C1C1E', overflow: 'hidden' },
   savedItemImage: { width: '100%', height: '100%', resizeMode: 'cover' },
