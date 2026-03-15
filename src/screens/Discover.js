@@ -30,8 +30,10 @@ import Reanimated, {
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 const buttonSize = Math.round(width * 0.13);
+const spacing = 20; // 按鈕之間的垂直間距
 
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
+const AnimatedIonicons = Reanimated.createAnimatedComponent(Ionicons);
 
 const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const scale = useSharedValue(1);
@@ -67,13 +69,11 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       translateY.value = withSpring(0, springConfig);
     });
 
-  // 修改雙擊邏輯：判斷點擊位置
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .maxDistance(30)
     .onEnd((event) => {
       if (onDoubleTap) {
-        // 如果點擊位置在螢幕寬度的一半左邊，傳回 'left'，否則 'right'
         const side = event.x < width / 2 ? 'left' : 'right';
         runOnJS(onDoubleTap)(side);
       }
@@ -97,7 +97,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
-
           <Image
             source={{ uri: card.img }}
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
@@ -106,7 +105,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 
           <View style={styles.contentContainer}>
             <Image source={{ uri: card.img }} style={styles.cardImage} />
-
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <Text numberOfLines={1} style={styles.tagText}>
@@ -115,7 +113,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
               </Reanimated.View>
             )}
           </View>
-
         </Reanimated.View>
       </GestureDetector>
     </View>
@@ -138,21 +135,39 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     opacity: 1 - isZoomingAnim.value,
   }));
 
+  // X 按鈕背景與縮放
   const xButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.0], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [-150, 0],
-      ['rgb(255, 59, 48)', 'rgb(12, 12, 12)']
+      ['rgb(255, 59, 48)', 'rgb(12, 12, 12)'] // 變成紅色背景
     )
   }));
 
+  const xIconStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      swipeX.value,
+      [-150, 0], // 在滑動接近到位時快速轉黑
+      ['#000000', 'rgb(255, 59, 48)']
+    )
+  }));
+
+  // Heart 按鈕背景與縮放
   const heartButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.0, 1.5], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
-      ['rgb(12, 12, 12)', 'rgb(234, 128, 252)']
+      ['rgb(12, 12, 12)', 'rgb(234, 128, 252)'] // 變成粉紫色背景
+    )
+  }));
+
+  const heartIconStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      swipeX.value,
+      [0, 150],
+      ['rgb(234, 128, 252)', '#000000']
     )
   }));
 
@@ -214,7 +229,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     setTimeout(() => swiperRef.current?.swipeRight(), 20);
   };
 
-  // 處理雙擊分流邏輯
   const handleDoubleTap = (side) => {
     if (side === 'left') {
       handlePressCross();
@@ -223,16 +237,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     }
   };
 
-  // Share Button
   const handleShare = async () => {
     const currentCard = cards[currentIndex];
     if (!currentCard) return;
-
     try {
       await Share.share({
-        // iOS 和 Android 共通：設定你要分享的文字和網址
         message: `快來看看這個酷東西：${currentCard.tag || '推薦商品'}！\n\n購買連結：${currentCard.url}`,
-        // iOS 專用：如果加上 url 屬性，iOS 分享面板有時候能抓到比較好看的預覽
         url: currentCard.url,
         title: currentCard.tag || '商品分享'
       });
@@ -298,22 +308,32 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         </View>
 
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, { zIndex: 20 }]} pointerEvents="box-none">
-          <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(true)}>
-            <Ionicons name="chevron-up" size={width * 0.08} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View pointerEvents="none" style={styles.topLogoContainer}>
+            <Image
+              source={{ uri: 'https://e-closet-backend.onrender.com/static/icon/AirSpace.jpg' }}
+              style={styles.topLogo}
+            />
+          </View>
 
-          <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
-            <Ionicons name="close" size={width * 0.08} color="#FFFFFF" />
+          {/* 右下方按鈕群：由下而上分別是 Heart -> Share -> Up */}
+          <ReanimatedTouchableOpacity style={[styles.fixedHeartWrapper, heartButtonStyle]} onPress={handlePressHeart}>
+            <AnimatedIonicons name="heart-outline" size={width * 0.08} style={heartIconStyle} />
           </ReanimatedTouchableOpacity>
 
           <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <ReanimatedTouchableOpacity style={[styles.fixedHeartWrapper, heartButtonStyle]} onPress={handlePressHeart}>
-            <Ionicons name="heart-outline" size={width * 0.08} color="#FFFFFF" />
+          <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
+            <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* 左側：Close */}
+          <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
+            <AnimatedIonicons name="close" size={width * 0.08} style={xIconStyle} />
           </ReanimatedTouchableOpacity>
 
+          {/* 中間：Buy Now */}
           <TouchableOpacity
             onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
             style={styles.fixedBuyNowWrapper}
@@ -324,10 +344,10 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
           </TouchableOpacity>
         </Reanimated.View>
 
-        <DescriptionPanel 
-          visible={isDescVisible} 
-          onClose={() => setIsDescVisible(false)} 
-          description={cards[currentIndex]?.description} 
+        <DescriptionPanel
+          visible={isDescVisible}
+          onClose={() => setIsDescVisible(false)}
+          description={cards[currentIndex]?.description}
         />
       </View>
     </GestureHandlerRootView>
@@ -346,7 +366,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingTop: height * 0.22
+    paddingTop: height * 0.3
   },
 
   cardImage: {
@@ -373,14 +393,55 @@ const styles = StyleSheet.create({
     textShadowRadius: 4
   },
 
-  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
-  fixedUpWrapper: { position: 'absolute', bottom: height * 0.15 + buttonSize + 10, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgb(12, 12, 12)' },
-  fixedShareWrapper: { position: 'absolute', bottom: height * 0.15 + buttonSize + 10, right: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgb(12, 12, 12)' },
+  // 基礎佈局數值
+  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+
+  // 右側垂直堆疊
+  // 1. 最底層: Heart
+  fixedHeartWrapper: {
+    position: 'absolute',
+    bottom: height * 0.12,
+    right: width * 0.12,
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  // 2. 中間層: Share (Heart 上方)
+  fixedShareWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + (buttonSize + spacing) * 2,
+    right: width * 0.02,
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.8)'
+  },
+  // 3. 最上層: Up (Share 上方)
+  fixedUpWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + buttonSize + spacing,
+    right: width * 0.02,
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.8)'
+  },
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
+
+  topLogoContainer: { position: 'absolute', marginTop: height * 0.01, width: '100%', alignItems: 'center', zIndex: 100 },
+  topLogo: { width: width * 0.35, height: height * 0.35, resizeMode: 'contain'/*, right: width * 0.3*/ },
 
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
