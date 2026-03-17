@@ -1,6 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useRef } from 'react';
+import { useFocusEffect } from 'expo-router'; // 1. 引入 useFocusEffect
+import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import OpenSaved from './OpenSaved';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
@@ -8,13 +11,12 @@ const PADDING_HORIZONTAL = 20;
 const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
-const SavedItemCard = ({ item, onOpenItem }) => {
+const SavedItemCard = ({ item, index, onOpenItem }) => {
   const itemRef = useRef(null);
 
   const handlePress = () => {
-    // 取得該元件在螢幕上的絕對位置
     itemRef.current?.measure((x, y, width, height, pageX, pageY) => {
-      onOpenItem(item, { x: pageX, y: pageY, width, height });
+      onOpenItem(item, { x: pageX, y: pageY, width, height }, index);
     });
   };
 
@@ -38,7 +40,44 @@ const SavedItemCard = ({ item, onOpenItem }) => {
   );
 };
 
-export default function SavedScreen({ savedItems = [], onOpenItem }) {
+export default function SavedScreen({ savedItems = [], onRemoveSaved, onSave }) {
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [originLayout, setOriginLayout] = useState(null);
+
+  // 2. 加入 useFocusEffect 監聽畫面進出
+  useFocusEffect(
+    useCallback(() => {
+      // 進入此畫面時不需要特別做事
+      return () => {
+        // 當離開此畫面 (切換 Tab) 時，強制重置狀態，收起正在瀏覽的卡片
+        setSelectedIndex(null);
+        setOriginLayout(null);
+      };
+    }, [])
+  );
+
+  const handleOpenItem = (item, layout, index) => {
+    setOriginLayout(layout);
+    setSelectedIndex(index);
+  };
+
+  const handleCloseItem = () => {
+    setSelectedIndex(null);
+    setOriginLayout(null);
+  };
+
+  const handleNext = () => {
+    if (selectedIndex !== null && selectedIndex < savedItems.length - 1) {
+      setSelectedIndex(selectedIndex + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (selectedIndex !== null && selectedIndex > 0) {
+      setSelectedIndex(selectedIndex - 1);
+    }
+  };
+
   return (
     <View style={styles.screenContainer}>
       <LinearGradient colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']} locations={[0, 0.5, 1]} style={styles.fullWidthHeader}>
@@ -53,11 +92,26 @@ export default function SavedScreen({ savedItems = [], onOpenItem }) {
           <SavedItemCard
             key={item.img + index}
             item={item}
-            onOpenItem={onOpenItem}
+            index={index}
+            onOpenItem={handleOpenItem}
           />
         ))}
         {savedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
       </ScrollView>
+
+      {selectedIndex !== null && savedItems[selectedIndex] && (
+        <OpenSaved
+          itemData={savedItems[selectedIndex]}
+          prevItemData={savedItems[selectedIndex - 1]}
+          nextItemData={savedItems[selectedIndex + 1]}
+          onClose={handleCloseItem}
+          originLayout={originLayout}
+          onRemoveSaved={onRemoveSaved}
+          onSave={onSave}
+          onNext={selectedIndex < savedItems.length - 1 ? handleNext : undefined}
+          onPrev={selectedIndex > 0 ? handlePrev : undefined}
+        />
+      )}
     </View>
   );
 }
