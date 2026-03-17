@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
@@ -40,15 +40,16 @@ export default function DescriptionPanel({ visible, onClose, description }) {
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={StyleSheet.absoluteFillObject} />
-      </TouchableWithoutFeedback>
+      {/* 點擊背景空白處關閉面板 */}
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
 
       <Reanimated.View 
         style={[styles.glassContainer, animatedStyle]} 
         pointerEvents="auto"
-        onStartShouldSetResponder={() => true}
       >
+        {/* 吸收點擊事件的擋箭牌，防止點擊面板內部時觸發外層的 onClose */}
+        <Pressable style={StyleSheet.absoluteFillObject} />
+
         <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
