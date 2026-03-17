@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router'; // 引入 expo-router 的 useFocusEffect
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -131,6 +132,17 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const isButtonPressed = useRef(false);
   const lockTimeout = useRef(null);
   const isZoomingAnim = useSharedValue(0);
+
+  // 加上這段：使用 expo-router 的 useFocusEffect 來監聽畫面失焦
+  useFocusEffect(
+    useCallback(() => {
+      // 進入此畫面時不需要特別做事
+      return () => {
+        // 當離開此畫面 (切換 Tab) 時，把 Description 收起來
+        setIsDescVisible(false);
+      };
+    }, [])
+  );
 
   const uiAnimatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - isZoomingAnim.value,

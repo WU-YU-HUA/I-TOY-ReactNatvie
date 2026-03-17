@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// 1. 記得引入 Share API
+import { Dimensions, Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+
+// 2. 引入你的 DescriptionPanel
+import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13);
 const GAP = width * 0.1;
+const spacing = 20; // 補上按鈕之間的垂直間距常數
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
@@ -90,6 +95,9 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 export default function OpenSaved({ itemData, prevItemData, nextItemData, onClose, originLayout, onRemoveSaved, onSave, onNext, onPrev }) {
   const [isZooming, setIsZooming] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
+  
+  // 3. 新增控制 Description 顯示的狀態
+  const [isDescVisible, setIsDescVisible] = useState(false);
 
   const screenAnim = useSharedValue(0);
   const swipeTranslateY = useSharedValue(0);
@@ -118,6 +126,20 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
     } else {
       if (onSave) onSave(itemData);
       setIsSaved(true);
+    }
+  };
+
+  // 4. 新增 Share 處理邏輯
+  const handleShare = async () => {
+    if (!itemData) return;
+    try {
+      await Share.share({
+        message: `快來看看這個酷東西：${itemData.tag || '推薦商品'}！\n\n購買連結：${itemData.url}`,
+        url: itemData.url,
+        title: itemData.tag || '商品分享'
+      });
+    } catch (error) {
+      console.error('分享發生錯誤:', error.message);
     }
   };
 
@@ -261,6 +283,7 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
           </Reanimated.View>
 
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
+            
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
               <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
@@ -277,6 +300,15 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
               </View>
             </TouchableOpacity>
 
+            {/* 5. 補上 Share & Up 按鈕 */}
+            <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
+              <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+            </TouchableOpacity>
+
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
                 <View style={styles.buyNowSolidButton}>
@@ -284,7 +316,15 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
                 </View>
               </TouchableOpacity>
             )}
+            
           </Reanimated.View>
+
+          {/* 6. 加入 DescriptionPanel 組件 */}
+          <DescriptionPanel
+            visible={isDescVisible}
+            onClose={() => setIsDescVisible(false)}
+            description={itemData?.description}
+          />
         </Reanimated.View>
       </GestureDetector>
     </GestureHandlerRootView>
@@ -334,4 +374,30 @@ const styles = StyleSheet.create({
   fixedBackWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20 },
   fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.12, zIndex: 20 },
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
+
+  // 7. 新增 Share 和 Up 的對應樣式 (原封不動從 Discover.js 複製)
+  fixedShareWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + (buttonSize + spacing) * 2,
+    right: width * 0.02,
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.9)'
+  },
+  fixedUpWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + buttonSize + spacing,
+    right: width * 0.02,
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.9)'
+  },
 });
