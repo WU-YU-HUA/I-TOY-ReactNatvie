@@ -104,15 +104,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
-          {/* <View pointerEvents="none" style={[styles.topLogoContainer, { top: 0 }]}>
-            {!!card.logo && (
-              <Image
-                source={{ uri: card.logo }}
-                style={styles.topLogo}
-              />
-            )}
-          </View> */}
-
           <View style={styles.contentContainer}>
             <Image source={{ uri: card.img }} style={styles.cardImage} />
             {!!card.tag && (
@@ -477,9 +468,6 @@ const styles = StyleSheet.create({
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
-
-  topLogoContainer: { position: 'absolute', marginTop: 0, width: '100%', alignItems: 'center', zIndex: 100 },
-  topLogo: { width: width * 0.35, height: height * 0.35, resizeMode: 'contain', left: width * 0.25 },
 
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },

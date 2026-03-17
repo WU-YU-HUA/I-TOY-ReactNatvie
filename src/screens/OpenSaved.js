@@ -6,8 +6,8 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
-const buttonSize = Math.round(width * 0.13); 
-const GAP = width * 0.1; 
+const buttonSize = Math.round(width * 0.13);
+const GAP = width * 0.1;
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
@@ -18,7 +18,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      if (isZoomingAnim) isZoomingAnim.value = withTiming(1, { duration: 150 }); 
+      if (isZoomingAnim) isZoomingAnim.value = withTiming(1, { duration: 150 });
       if (setIsZooming) runOnJS(setIsZooming)(true);
     })
     .onUpdate((event) => { scale.value = Math.max(1, Math.min(event.scale, 3.5)); })
@@ -26,12 +26,12 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
       scale.value = withSpring(1, springConfig);
       translateX.value = withSpring(0, springConfig);
       translateY.value = withSpring(0, springConfig);
-      if (isZoomingAnim) isZoomingAnim.value = withTiming(0, { duration: 150 }); 
-      if (setIsZooming) runOnJS(setIsZooming)(false); 
+      if (isZoomingAnim) isZoomingAnim.value = withTiming(0, { duration: 150 });
+      if (setIsZooming) runOnJS(setIsZooming)(false);
     });
 
   const panGesture = Gesture.Pan()
-    .minPointers(2) 
+    .minPointers(2)
     .onUpdate((event) => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
@@ -44,7 +44,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [ { translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value } ],
+    transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
   }));
 
   const tagAnimatedStyle = useAnimatedStyle(() => {
@@ -58,11 +58,11 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
     <View style={styles.card}>
       <GestureDetector gesture={isActive ? composedGesture : Gesture.Tap()}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
-          
+
           {/* 1. 背景模糊層 (與 Discover.js 一致) */}
-          <Image 
-            source={{ uri: card.img }} 
-            style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} 
+          <Image
+            source={{ uri: card.img }}
+            style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
@@ -70,7 +70,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
           <View style={styles.contentContainer}>
             {/* 圖片保持原始比例 contain */}
             <Image source={{ uri: card.img }} style={styles.cardImage} />
-            
+
             {/* 3. Tag 緊貼在圖片下方 */}
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
@@ -92,9 +92,9 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   const [isSaved, setIsSaved] = useState(true);
 
   const screenAnim = useSharedValue(0);
-  const swipeTranslateY = useSharedValue(0); 
-  const swipeTranslateX = useSharedValue(0); 
-  const isZoomingAnim = useSharedValue(0); 
+  const swipeTranslateY = useSharedValue(0);
+  const swipeTranslateX = useSharedValue(0);
+  const isZoomingAnim = useSharedValue(0);
 
   useEffect(() => {
     screenAnim.value = withTiming(1, { duration: 200 });
@@ -105,7 +105,7 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   }, [itemData]);
 
   const handleClose = () => {
-    swipeTranslateY.value = withTiming(0, { duration: 200 }); 
+    swipeTranslateY.value = withTiming(0, { duration: 200 });
     screenAnim.value = withTiming(0, { duration: 200 }, () => {
       runOnJS(onClose)();
     });
@@ -122,9 +122,9 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   };
 
   const swipeDownGesture = Gesture.Pan()
-    .maxPointers(1) 
-    .activeOffsetY([-10, 10]) 
-    .failOffsetX([-20, 20]) 
+    .maxPointers(1)
+    .activeOffsetY([-10, 10])
+    .failOffsetX([-20, 20])
     .onUpdate((event) => {
       if (event.translationY > 0) {
         swipeTranslateY.value = event.translationY;
@@ -140,8 +140,8 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
 
   const swipeHorizontalGesture = Gesture.Pan()
     .maxPointers(1)
-    .activeOffsetX([-15, 15]) 
-    .failOffsetY([-20, 20]) 
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-20, 20])
     .onUpdate((event) => {
       if ((event.translationX < 0 && !onNext) || (event.translationX > 0 && !onPrev)) {
         swipeTranslateX.value = event.translationX / 3;
@@ -156,7 +156,7 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
             runOnJS(onNext)();
           });
         } else {
-          swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true }); 
+          swipeTranslateX.value = withSpring(0, { damping: 30, stiffness: 150, overshootClamping: true });
         }
       } else if (event.translationX > width * 0.15 || event.velocityX > 600) {
         if (onPrev) {
@@ -186,12 +186,12 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
       const currentHeight = interpolate(screenAnim.value, [0, 1], [originLayout.height, height]);
       const currentX = interpolate(screenAnim.value, [0, 1], [originLayout.x, 0]);
       const currentY = interpolate(screenAnim.value, [0, 1], [originLayout.y, 0]);
-      const currentRadius = interpolate(screenAnim.value, [0, 1], [12, width * 0.09]); 
+      const currentRadius = interpolate(screenAnim.value, [0, 1], [12, width * 0.09]);
 
       return {
         position: 'absolute',
         left: currentX,
-        top: currentY + swipeTranslateY.value, 
+        top: currentY + swipeTranslateY.value,
         width: currentWidth,
         height: currentHeight,
         borderRadius: currentRadius,
@@ -202,12 +202,12 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
 
     const fallbackScale = (0.9 + 0.1 * screenAnim.value) * swipeScale;
     return {
-      opacity: screenAnim.value, 
+      opacity: screenAnim.value,
       width: '100%',
       height: '100%',
       transform: [
         { translateY: height * (1 - screenAnim.value) + swipeTranslateY.value },
-        { scale: fallbackScale } 
+        { scale: fallbackScale }
       ],
     };
   });
@@ -232,7 +232,7 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
     <GestureHandlerRootView style={styles.rootOverlay} pointerEvents="box-none">
       <GestureDetector gesture={screenGestures}>
         <Reanimated.View style={[styles.screenContainer, screenAnimatedStyle, containerAnimatedStyle]}>
-          
+
           <Reanimated.View style={trackAnimatedStyle}>
             {/* 左側：上一張 */}
             <View style={{ width, height: '100%' }}>
@@ -243,12 +243,12 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
 
             {/* 中間：目前卡片 */}
             <View style={{ width, height: '100%' }}>
-              <ZoomableCard 
-                card={itemData} 
-                setIsZooming={setIsZooming} 
-                screenAnim={screenAnim} 
+              <ZoomableCard
+                card={itemData}
+                setIsZooming={setIsZooming}
+                screenAnim={screenAnim}
                 isZoomingAnim={isZoomingAnim}
-                isActive={true} 
+                isActive={true}
               />
             </View>
 
@@ -266,17 +266,17 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
               </View>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]} 
+
+            <TouchableOpacity
+              style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]}
               onPress={handleToggleHeart}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconCircle, { backgroundColor: isSaved ? 'rgb(234, 128, 252)' : 'rgba(12, 12, 12, 0.7)' }]}>
-                <Ionicons name={isSaved ? "heart" : "heart-outline"} size={width * 0.075} color="white" />
+              <View style={[styles.iconCircle, { backgroundColor: isSaved ? 'rgb(0, 255, 255)' : 'rgba(12, 12, 12, 0.7)' }]}>
+                <Ionicons name={"heart-outline"} size={width * 0.075} color={isSaved ? "rgb(12,12,12)" : "rgb(0,255,255)"} />
               </View>
             </TouchableOpacity>
-            
+
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
                 <View style={styles.buyNowSolidButton}>
@@ -295,43 +295,43 @@ const styles = StyleSheet.create({
   rootOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 90 },
   screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
   card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
-  
+
   // 與 Discover.js 一致的佈局
   contentContainer: {
     flex: 1,
-    justifyContent: 'flex-start', 
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingTop: height * 0.22 // 與 Discover.js 相同的頂部間距
+    paddingTop: height * 0.18 // 與 Discover.js 相同的頂部間距
   },
-  cardImage: { 
+  cardImage: {
     width: width,
-    aspectRatio: 1,
-    maxHeight: height * 0.6,
-    resizeMode: 'contain'
+    aspectRatio: 0.8, // 3:4比例，讓圖片更高
+    maxHeight: height * 0.7,
+    resizeMode: 'flex'
   },
-  tagWrapper: { 
+  tagWrapper: {
     marginTop: 12,
     paddingHorizontal: 15,
     width: '100%',
     alignItems: 'center'
   },
-  tagText: { 
-    color: '#FFFFFF', 
-    fontWeight: '600', 
-    fontSize: 16, 
-    textAlign: 'center', 
+  tagText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+    textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4 
+    textShadowRadius: 4
   },
 
-  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.15, alignSelf: 'center', zIndex: 20 },
+  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
   // 改為與 Discover.js 相同的實色按鈕
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
-  
-  fixedBackWrapper: { position: 'absolute', bottom: height * 0.15, left: width * 0.12, zIndex: 20 },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.15, right: width * 0.12, zIndex: 20 },
+
+  fixedBackWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20 },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.12, zIndex: 20 },
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
 });
