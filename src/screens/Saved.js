@@ -1,14 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router'; // 1. 引入 useFocusEffect
+import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import OpenSaved from './OpenSaved';
+import { useAppContext } from '../context/AppContext';
+import OpenSaved from './OpenSaved'; // ✅ 1. 把 OpenSaved 重新引入
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const COLUMN_GAP = 15;
 const PADDING_HORIZONTAL = 20;
-const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
+const CARD_WIDTH = (width - PADDING_HORIZONTAL * 2 - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
 const SavedItemCard = ({ item, index, onOpenItem }) => {
@@ -40,43 +41,58 @@ const SavedItemCard = ({ item, index, onOpenItem }) => {
   );
 };
 
-export default function SavedScreen({ savedItems = [], onRemoveSaved, onSave }) {
+export default function SavedScreen() {
+  // 從 Context 取得資料跟全域的 Save/Remove 函式
+  const { savedItems, handleSave, handleRemoveSaved } = useAppContext();
+
+  // ✅ 2. 建立本地狀態，不干涉 GlobalUIWrapper
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
+  const [previewItem, setPreviewItem] = useState(null); // 獨立保存預覽的卡片
 
-  // 2. 加入 useFocusEffect 監聽畫面進出
   useFocusEffect(
     useCallback(() => {
-      // 進入此畫面時不需要特別做事
       return () => {
-        // 當離開此畫面 (切換 Tab) 時，強制重置狀態，收起正在瀏覽的卡片
         setSelectedIndex(null);
         setOriginLayout(null);
+        setPreviewItem(null);
       };
     }, [])
   );
 
-  const handleOpenItem = (item, layout, index) => {
+  // 本地的開啟邏輯
+  const handleLocalOpen = (item, layout, index) => {
     setOriginLayout(layout);
     setSelectedIndex(index);
+    setPreviewItem(item);
   };
 
-  const handleCloseItem = () => {
+  const handleLocalClose = () => {
     setSelectedIndex(null);
     setOriginLayout(null);
+    setPreviewItem(null);
   };
 
   const handleNext = () => {
     if (selectedIndex !== null && selectedIndex < savedItems.length - 1) {
-      setSelectedIndex(selectedIndex + 1);
+      const nextIndex = selectedIndex + 1;
+      setSelectedIndex(nextIndex);
+      setPreviewItem(savedItems[nextIndex]); // 更新預覽卡片
     }
   };
 
   const handlePrev = () => {
     if (selectedIndex !== null && selectedIndex > 0) {
-      setSelectedIndex(selectedIndex - 1);
+      const prevIndex = selectedIndex - 1;
+      setSelectedIndex(prevIndex);
+      setPreviewItem(savedItems[prevIndex]); // 更新預覽卡片
     }
   };
+
+  // ✅ 3. 核心邏輯：即時計算這張預覽中的卡片，是不是還在收藏陣列裡？
+  const isCurrentlySaved = previewItem 
+    ? savedItems.some(i => i.img === previewItem.img) 
+    : false;
 
   return (
     <View style={styles.screenContainer}>
@@ -93,24 +109,29 @@ export default function SavedScreen({ savedItems = [], onRemoveSaved, onSave }) 
             key={item.img + index}
             item={item}
             index={index}
-            onOpenItem={handleOpenItem}
+            onOpenItem={handleLocalOpen} // 呼叫本地的開啟函式
           />
         ))}
         {savedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
       </ScrollView>
 
-      {selectedIndex !== null && savedItems[selectedIndex] && (
-        <OpenSaved
-          itemData={savedItems[selectedIndex]}
-          prevItemData={savedItems[selectedIndex - 1]}
-          nextItemData={savedItems[selectedIndex + 1]}
-          onClose={handleCloseItem}
-          originLayout={originLayout}
-          onRemoveSaved={onRemoveSaved}
-          onSave={onSave}
-          onNext={selectedIndex < savedItems.length - 1 ? handleNext : undefined}
-          onPrev={selectedIndex > 0 ? handlePrev : undefined}
-        />
+      {/* ✅ 4. 本地渲染 OpenSaved，這樣它就會被限制在 Tab Bar 之內！ */}
+      {previewItem && (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+          <OpenSaved
+            itemData={previewItem}
+            prevItemData={selectedIndex > 0 ? savedItems[selectedIndex - 1] : null}
+            nextItemData={selectedIndex < savedItems.length - 1 ? savedItems[selectedIndex + 1] : null}
+            onClose={handleLocalClose}
+            originLayout={originLayout}
+            onRemoveSaved={handleRemoveSaved}
+            onSave={handleSave}
+            onNext={selectedIndex < savedItems.length - 1 ? handleNext : undefined}
+            onPrev={selectedIndex > 0 ? handlePrev : undefined}
+            
+            isSavedStatus={isCurrentlySaved} // 將真實狀態傳給 OpenSaved
+          />
+        </View>
       )}
     </View>
   );

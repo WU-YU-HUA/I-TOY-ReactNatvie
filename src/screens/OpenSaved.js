@@ -1,18 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-// 1. 記得引入 Share API
 import { Dimensions, Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
-// 2. 引入你的 DescriptionPanel
 import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13);
 const GAP = width * 0.1;
-const spacing = 20; // 補上按鈕之間的垂直間距常數
+const spacing = 20; 
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const scale = useSharedValue(1);
@@ -54,7 +52,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
   const tagAnimatedStyle = useAnimatedStyle(() => {
     if (!isActive || !screenAnim || !isZoomingAnim) return { opacity: 1 };
-    // 只有在全屏展開且沒有在縮放時才顯示 Tag
     const isVisible = screenAnim.value > 0.95 ? 1 : 0;
     return { opacity: isVisible * (1 - isZoomingAnim.value) };
   });
@@ -64,19 +61,15 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
       <GestureDetector gesture={isActive ? composedGesture : Gesture.Tap()}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
 
-          {/* 1. 背景模糊層 (與 Discover.js 一致) */}
           <Image
             source={{ uri: card.img }}
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
-          {/* 2. 內容容器 */}
           <View style={styles.contentContainer}>
-            {/* 圖片保持原始比例 contain */}
             <Image source={{ uri: card.img }} style={styles.cardImage} />
 
-            {/* 3. Tag 緊貼在圖片下方 */}
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <Text numberOfLines={1} style={styles.tagText}>
@@ -92,11 +85,12 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   );
 };
 
-export default function OpenSaved({ itemData, prevItemData, nextItemData, onClose, originLayout, onRemoveSaved, onSave, onNext, onPrev }) {
+export default function OpenSaved({ 
+  itemData, prevItemData, nextItemData, onClose, originLayout, 
+  onRemoveSaved, onSave, onNext, onPrev, 
+  isSavedStatus // 接收大老闆傳來的真實狀態
+}) {
   const [isZooming, setIsZooming] = useState(false);
-  const [isSaved, setIsSaved] = useState(true);
-  
-  // 3. 新增控制 Description 顯示的狀態
   const [isDescVisible, setIsDescVisible] = useState(false);
 
   const screenAnim = useSharedValue(0);
@@ -120,16 +114,14 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
   };
 
   const handleToggleHeart = () => {
-    if (isSaved) {
+    // 根據全域的狀態來決定要觸發哪個動作
+    if (isSavedStatus) {
       if (onRemoveSaved) onRemoveSaved(itemData);
-      setIsSaved(false);
     } else {
       if (onSave) onSave(itemData);
-      setIsSaved(true);
     }
   };
 
-  // 4. 新增 Share 處理邏輯
   const handleShare = async () => {
     if (!itemData) return;
     try {
@@ -256,14 +248,12 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
         <Reanimated.View style={[styles.screenContainer, screenAnimatedStyle, containerAnimatedStyle]}>
 
           <Reanimated.View style={trackAnimatedStyle}>
-            {/* 左側：上一張 */}
             <View style={{ width, height: '100%' }}>
               {prevItemData && <ZoomableCard card={prevItemData} isActive={false} />}
             </View>
 
             <View style={{ width: GAP, height: '100%' }} />
 
-            {/* 中間：目前卡片 */}
             <View style={{ width, height: '100%' }}>
               <ZoomableCard
                 card={itemData}
@@ -276,14 +266,13 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
 
             <View style={{ width: GAP, height: '100%' }} />
 
-            {/* 右側：下一張 */}
             <View style={{ width, height: '100%' }}>
               {nextItemData && <ZoomableCard card={nextItemData} isActive={false} />}
             </View>
           </Reanimated.View>
 
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
-            
+
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
               <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
@@ -294,13 +283,17 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
               style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]}
               onPress={handleToggleHeart}
               activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
             >
-              <View style={[styles.iconCircle, { backgroundColor: isSaved ? 'rgb(0, 255, 255)' : 'rgba(12, 12, 12, 0.7)' }]}>
-                <Ionicons name={"heart-outline"} size={width * 0.075} color={isSaved ? "rgb(12,12,12)" : "rgb(0,255,255)"} />
+              <View style={[styles.iconCircle, { backgroundColor: isSavedStatus ? 'rgb(0, 255, 255)' : 'rgba(12, 12, 12, 0.7)' }]}>
+                <Ionicons 
+                  name={"heart-outline"} 
+                  size={width * 0.075} 
+                  color={isSavedStatus ? "rgb(12,12,12)" : "rgb(0,255,255)"} 
+                />
               </View>
             </TouchableOpacity>
 
-            {/* 5. 補上 Share & Up 按鈕 */}
             <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
             </TouchableOpacity>
@@ -316,10 +309,9 @@ export default function OpenSaved({ itemData, prevItemData, nextItemData, onClos
                 </View>
               </TouchableOpacity>
             )}
-            
+
           </Reanimated.View>
 
-          {/* 6. 加入 DescriptionPanel 組件 */}
           <DescriptionPanel
             visible={isDescVisible}
             onClose={() => setIsDescVisible(false)}
@@ -336,17 +328,16 @@ const styles = StyleSheet.create({
   screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
   card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
 
-  // 與 Discover.js 一致的佈局
   contentContainer: {
     flex: 1,
     justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingTop: height * 0.18 // 與 Discover.js 相同的頂部間距
+    paddingTop: height * 0.18
   },
   cardImage: {
     width: width,
-    aspectRatio: 0.8, // 3:4比例，讓圖片更高
+    aspectRatio: 0.8,
     maxHeight: height * 0.7,
     resizeMode: 'flex'
   },
@@ -367,7 +358,6 @@ const styles = StyleSheet.create({
   },
 
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
-  // 改為與 Discover.js 相同的實色按鈕
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
 
@@ -375,7 +365,6 @@ const styles = StyleSheet.create({
   fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.12, zIndex: 20 },
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
 
-  // 7. 新增 Share 和 Up 的對應樣式 (原封不動從 Discover.js 複製)
   fixedShareWrapper: {
     position: 'absolute',
     bottom: height * 0.18 + (buttonSize + spacing) * 2,

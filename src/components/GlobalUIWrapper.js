@@ -3,12 +3,13 @@ import React from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
-import OpenSaved from '../screens/OpenSaved';
+import OpenSaved from '../screens/OpenSaved'; // 確認這裡的路徑正確
 
 const { height } = Dimensions.get('window');
 
 export default function GlobalUIWrapper({ children }) {
   const {
+    savedItems,     // 取出全域收藏清單
     openedItem,
     originLayout,
     handleCloseItem,
@@ -19,6 +20,11 @@ export default function GlobalUIWrapper({ children }) {
     currentList,
     openItemIndex,
   } = useAppContext();
+
+  // 即時計算：現在打開的這個 item，到底在不在收藏清單裡？
+  const isCurrentlySaved = openedItem 
+    ? savedItems.some((i) => i.img === openedItem.img) 
+    : false;
 
   return (
     <View style={styles.container}>
@@ -36,6 +42,8 @@ export default function GlobalUIWrapper({ children }) {
             onSave={handleSave}
             onNext={openItemIndex >= 0 && openItemIndex < currentList.length - 1 ? handleNextItem : undefined}
             onPrev={openItemIndex > 0 ? handlePrevItem : undefined}
+            // 傳遞真實的收藏狀態給 OpenSaved
+            isSavedStatus={isCurrentlySaved} 
           />
         </View>
       )}
@@ -46,7 +54,6 @@ export default function GlobalUIWrapper({ children }) {
         style={styles.topGlobalGradient}
         pointerEvents="none"
       />
-
     </View>
   );
 }
