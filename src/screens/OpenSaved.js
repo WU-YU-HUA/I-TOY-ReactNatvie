@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Dimensions, Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
@@ -10,14 +10,26 @@ import DescriptionPanel from './Description';
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13);
 const GAP = width * 0.1;
-const spacing = 20; 
+const spacing = 20;
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
+  // 1. Handle legacy string data vs new array data safely
+  const images = Array.isArray(card.img) ? card.img : [card.img];
+  const [imgIndex, setImgIndex] = useState(0);
+
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
+
+  // 2. Reset index if the underlying card data changes (e.g., swiping to next item)
+  useEffect(() => {
+    setImgIndex(0);
+  }, [card]);
+
+  const handleNextImage = () => setImgIndex((prev) => (prev + 1) % images.length);
+  const handlePrevImage = () => setImgIndex((prev) => (prev - 1 + images.length) % images.length);
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -44,7 +56,20 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
       translateY.value = withSpring(0, springConfig);
     });
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  // 3. Tap Gesture for cycling images
+  const tapGesture = Gesture.Tap().onEnd((event) => {
+    // Prevent cycling images if the user is currently zoomed in
+    if (scale.value > 1.1) return; 
+
+    if (event.x < width / 2) {
+      runOnJS(handlePrevImage)();
+    } else {
+      runOnJS(handleNextImage)();
+    }
+  });
+
+  // 4. Combine Tap seamlessly with Pinch and Pan
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
@@ -56,19 +81,33 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
     return { opacity: isVisible * (1 - isZoomingAnim.value) };
   });
 
+  const currentImageUri = images[imgIndex];
+
   return (
     <View style={styles.card}>
       <GestureDetector gesture={isActive ? composedGesture : Gesture.Tap()}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
 
-          <Image
-            source={{ uri: card.img }}
-            style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
-          />
-          <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+          {!!currentImageUri && (
+            <>
+              <Image
+                source={{ uri: currentImageUri }}
+                style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
+              />
+              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+            </>
+          )}
 
           <View style={styles.contentContainer}>
-            <Image source={{ uri: card.img }} style={styles.cardImage} />
+            {!!currentImageUri && (
+              <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
+            )}
+
+            {!!card.icon && (
+              <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
+                <Image source={{ uri: card.icon }} style={styles.brandIcon} />
+              </Reanimated.View>
+            )}
 
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
@@ -85,10 +124,10 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   );
 };
 
-export default function OpenSaved({ 
-  itemData, prevItemData, nextItemData, onClose, originLayout, 
-  onRemoveSaved, onSave, onNext, onPrev, 
-  isSavedStatus // 接收大老闆傳來的真實狀態
+export default function OpenSaved({
+  itemData, prevItemData, nextItemData, onClose, originLayout,
+  onRemoveSaved, onSave, onNext, onPrev,
+  isSavedStatus
 }) {
   const [isZooming, setIsZooming] = useState(false);
   const [isDescVisible, setIsDescVisible] = useState(false);
@@ -114,7 +153,6 @@ export default function OpenSaved({
   };
 
   const handleToggleHeart = () => {
-    // 根據全域的狀態來決定要觸發哪個動作
     if (isSavedStatus) {
       if (onRemoveSaved) onRemoveSaved(itemData);
     } else {
@@ -273,6 +311,16 @@ export default function OpenSaved({
 
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
 
+            {/* --- 頂部黑色背景區塊 --- */}
+            <View style={styles.headerInteractiveContainer} pointerEvents="none">
+                <Text style={styles.savedTitle}>收藏</Text>
+                {!!itemData.brand && (
+                <Text style={styles.categorySubtitle}>
+                    {itemData.brand}
+                </Text>
+                )}
+            </View>
+
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
               <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
                 <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
@@ -305,7 +353,11 @@ export default function OpenSaved({
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
                 <View style={styles.buyNowSolidButton}>
-                  <Text style={styles.buyNowText}>馬上購買</Text>
+                  <Text style={styles.buyNowText}>
+                    {itemData.price 
+                      ? `$${Number(itemData.price).toLocaleString()}` 
+                      : '馬上購買'}
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -328,6 +380,33 @@ const styles = StyleSheet.create({
   screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
   card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
 
+  headerInteractiveContainer: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    zIndex: 10,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingHorizontal: 25,
+    backgroundColor: 'rgba(18, 18, 18, 1)',
+    paddingBottom: 15,
+  },
+  savedTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 10,
+  },
+  categorySubtitle: {
+    fontSize: 22,
+    color: 'rgb(255,255,255)',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    fontWeight: '700',
+    textAlign: 'center',
+    bottom: height * 0.02
+  },
+
   contentContainer: {
     flex: 1,
     justifyContent: 'flex-start',
@@ -339,8 +418,21 @@ const styles = StyleSheet.create({
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
-    resizeMode: 'flex'
+    resizeMode: 'contain'
   },
+  
+  brandIconWrapper: {
+    position: 'absolute',
+    bottom: height * 0.26, 
+    left: width * 0.03,    
+    zIndex: 10,
+  },
+  brandIcon: {
+    width: width * 0.2,            
+    height: width * 0.2,            
+    borderRadius: width * 0.2 * 0.12,      
+  },
+
   tagWrapper: {
     marginTop: 12,
     paddingHorizontal: 15,

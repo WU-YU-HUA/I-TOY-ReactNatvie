@@ -11,21 +11,44 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-const { width } = Dimensions.get('window');
+
+const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
 const PADDING_HORIZONTAL = 20;
 const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
 export default function CategoryScreen({ categories, selectedBrands, onToggleBrand }) {
+  // 原本用來渲染清單的邏輯 (保留預設載入)
   const [activeCategory, setActiveCategory] = useState(null);
+  
+  // --- 與 Discover.js 一模一樣的篩選狀態 ---
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedStyles, setSelectedStyles] = useState([]);
 
   useEffect(() => {
     if (categories && Object.keys(categories).length > 0 && !activeCategory) {
       setActiveCategory('Female');
     }
   }, [categories]);
+
+  // --- 與 Discover.js 一模一樣的切換邏輯 ---
+  const toggleCategory = (category) => {
+    setSelectedCategories((prev) => 
+      prev.includes(category) 
+        ? prev.filter((item) => item !== category) 
+        : [...prev, category]
+    );
+  };
+
+  const toggleStyle = (style) => {
+    setSelectedStyles((prev) => 
+      prev.includes(style) 
+        ? prev.filter((item) => item !== style) 
+        : [...prev, style]
+    );
+  };
 
   if (!categories || Object.keys(categories).length === 0 || !activeCategory) {
     return (
@@ -39,6 +62,14 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
   return (
     <View style={styles.screenContainer}>
+      {/* 全螢幕透明遮罩：點擊空白處收回選單 */}
+      {isFilterExpanded && (
+        <TouchableOpacity 
+          style={styles.fullScreenDismiss} 
+          activeOpacity={1} 
+          onPress={() => setIsFilterExpanded(false)} 
+        />
+      )}
 
       <LinearGradient
         colors={['rgba(12,12,12,0.8)', 'rgba(12,12,12,0.6)', 'rgba(12,12,12,0)']}
@@ -61,7 +92,7 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
             >
               <Text style={styles.filterText}>篩選</Text>
               <Ionicons
-                name={isFilterExpanded ? "chevron-up" : "chevron-down"}
+                name="filter"
                 size={16}
                 color="rgba(255, 255, 255, 0.6)"
               />
@@ -69,6 +100,47 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
             {isFilterExpanded && (
               <View style={styles.filterDropdown}>
+                {/* --- 分類區塊 --- */}
+                <Text style={styles.dropdownSectionTitle}>分類</Text>
+                {['上身', '下身', '外套', '連身'].map((item) => {
+                  const isChecked = selectedCategories.includes(item);
+                  return (
+                    <TouchableOpacity 
+                      key={`cat-${item}`} 
+                      style={styles.checkboxRow}
+                      onPress={() => toggleCategory(item)}
+                    >
+                      <Text style={styles.filterOptionText}>{item}</Text>
+                      <Ionicons 
+                        name={isChecked ? "checkbox" : "square-outline"} 
+                        size={18} 
+                        color={isChecked ? "#00ffff" : "rgba(255,255,255,0.4)"} 
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <View style={styles.dropdownDivider} />
+
+                {/* --- 風格區塊 --- */}
+                <Text style={styles.dropdownSectionTitle}>風格</Text>
+                {['日系', '韓系', '美式', '簡約'].map((item) => {
+                  const isChecked = selectedStyles.includes(item);
+                  return (
+                    <TouchableOpacity 
+                      key={`style-${item}`} 
+                      style={styles.checkboxRow}
+                      onPress={() => toggleStyle(item)}
+                    >
+                      <Text style={styles.filterOptionText}>{item}</Text>
+                      <Ionicons 
+                        name={isChecked ? "checkbox" : "square-outline"} 
+                        size={18} 
+                        color={isChecked ? "#00ffff" : "rgba(255,255,255,0.4)"} 
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -87,15 +159,12 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
               return (
                 <View key={item.brand + index} style={styles.cardContainer}>
-
-                  {/* 🌟 關鍵修改: 增加一個 Wrapper，並設定 alignItems: 'center' 讓勾勾水平居中 */}
                   <View style={styles.cardVisualWrapper}>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => onToggleBrand(item.brand)}
                       style={[
                         styles.card,
-                        // 🌟 border 在下方樣式表中已移除
                         isSelected && styles.cardSelected
                       ]}
                     >
@@ -105,7 +174,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                       />
                     </TouchableOpacity>
 
-                    {/* 🌟 勾勾，移到 TouchableOpacity 外面，防止被 overflow:hidden 切掉 */}
                     {isSelected && (
                       <View style={styles.checkmarkContainer}>
                         <Ionicons
@@ -123,12 +191,10 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                   >
                     {item.brand}
                   </Text>
-
                 </View>
               );
             })}
 
-            {/* 補齊奇數個時的排版 */}
             {currentItems.length % 2 !== 0 && (
               <View style={[styles.cardContainer, { backgroundColor: 'transparent' }]} />
             )}
@@ -147,6 +213,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
+  fullScreenDismiss: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 25, 
+    backgroundColor: 'transparent',
+  },
+
   headerBackground: {
     position: 'absolute',
     top: 0,
@@ -158,7 +231,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     width: '100%',
-    zIndex: 20,
+    zIndex: 30, 
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 25,
   },
@@ -179,12 +252,12 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     position: 'relative',
-    zIndex: 30, // 確保下拉選單在最上層
+    zIndex: 40,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -200,25 +273,43 @@ const styles = StyleSheet.create({
     top: '100%',
     right: 0,
     marginTop: 8,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 12,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(28, 28, 30, 0.98)',
+    borderRadius: 15,
+    paddingVertical: 10,
     width: 140,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  filterOption: {
-    paddingVertical: 10,
+  dropdownSectionTitle: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 10,
+    marginHorizontal: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
     paddingHorizontal: 16,
   },
   filterOptionText: {
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
+    fontSize: 15,
   },
   scrollContent: {
     paddingTop: Platform.OS === 'ios' ? 170 : 150,
@@ -236,34 +327,28 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: CARD_WIDTH,
     marginBottom: COLUMN_GAP,
-    // 🌟 水平居中 Wrapper 和 Text
     alignItems: 'center',
   },
-  // 🌟 新增的 Wrapper，負責水平對齊勾勾
   cardVisualWrapper: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative', // 讓勾勾可以相對它進行絕對定位
-    // 這裡预設為 visible，所以勾勾超出 bottom 時不會被切掉
+    position: 'relative',
   },
   card: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
     borderRadius: CARD_WIDTH * RATIO_RADIUS,
     backgroundColor: '#1C1C1E',
-    overflow: 'hidden', // 🌟 保持 hidden 讓圖片有圓角，且不被 selected border 影響大小
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardSelected: {
-    // 🌟 移除 Border
     borderWidth: 0,
-    // 雖然 border 沒了，但為了保持原本卡片佔用的空間不變，
-    // 可能需要手動調整邊距，不過看起來這裡不需要，直接設 0 即可。
   },
   cardImage: {
     width: '100%',
@@ -280,24 +365,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: 0.5,
-    marginTop: 16, // 🌟 勾勾下移了，所以文字間距加大一點點
+    marginTop: 16,
     paddingHorizontal: 4,
     width: '100%',
   },
-  // 🌟 勾勾容器
   checkmarkContainer: {
-    position: 'absolute', // 相對於 cardVisualWrapper 定位
-    bottom: -12,          // 🌟 距離 Wrapper 底部的距離 (超出卡片範圍)
-    width: CARD_WIDTH * 0.2,
-    height: CARD_WIDTH * 0.2,
-    borderRadius: (CARD_WIDTH * 0.25) / 2, // 確保是完美的圓形
+    position: 'absolute',
+    bottom: -12,
+    width: CARD_WIDTH * 0.22,
+    height: CARD_WIDTH * 0.22,
+    borderRadius: (CARD_WIDTH * 0.25) / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#00ffff', // 單色青色背景
-
-    // 玻璃邊緣反光效果
+    backgroundColor: '#00ffff',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.4)',
-    zIndex: 30, // 確保在圖片上方
+    zIndex: 30,
   }
 });

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useFocusEffect } from 'expo-router'; // 引入 expo-router 的 useFocusEffect
+import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,7 +32,7 @@ import Reanimated, {
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 const buttonSize = Math.round(width * 0.13);
-const spacing = 20; // 按鈕之間的垂直間距
+const spacing = 20;
 
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
 const AnimatedIonicons = Reanimated.createAnimatedComponent(Ionicons);
@@ -41,6 +41,9 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+
+  // 新增：目前顯示的圖片索引
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
 
@@ -71,6 +74,23 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       translateY.value = withSpring(0, springConfig);
     });
 
+  // 處理單點擊切換圖片
+  const handleSingleTap = useCallback((side) => {
+    if (!card.img || card.img.length <= 1) return;
+    if (side === 'right') {
+      setCurrentImgIndex((prev) => (prev + 1) % card.img.length); // 下一張，到底回第一張
+    } else {
+      setCurrentImgIndex((prev) => (prev - 1 + card.img.length) % card.img.length); // 上一張，到底回最後一張
+    }
+  }, [card.img]);
+
+  const singleTapGesture = Gesture.Tap()
+    .numberOfTaps(1)
+    .onEnd((event) => {
+      const side = event.x < width / 2 ? 'left' : 'right';
+      runOnJS(handleSingleTap)(side);
+    });
+
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .maxDistance(30)
@@ -81,7 +101,9 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       }
     });
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, doubleTapGesture);
+  // 使用 Exclusive 讓手勢系統優先判斷雙擊，如果不是雙擊才觸發單擊
+  const tapGestures = Gesture.Exclusive(doubleTapGesture, singleTapGesture);
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGestures);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -95,18 +117,43 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
     opacity: 1 - isZoomingAnim.value,
   }));
 
+  // 取得當前的圖片 URI
+  const currentImageUri = card.img[currentImgIndex] || card.img[0];
+
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
           <Image
-            source={{ uri: card.img }}
+            source={{ uri: currentImageUri }}
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
           />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
           <View style={styles.contentContainer}>
-            <Image source={{ uri: card.img }} style={styles.cardImage} />
+            {/* 新增：上方指示點 */}
+            {card.img && card.img.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {card.img.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.paginationDot,
+                      currentImgIndex === idx ? styles.paginationDotActive : styles.paginationDotInactive
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+
+            <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
+            
+            {!!card.icon && (
+              <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
+                <Image source={{ uri: card.icon }} style={styles.brandIcon} />
+              </Reanimated.View>
+            )}
+            
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <Text numberOfLines={1} style={styles.tagText}>
@@ -126,20 +173,38 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const [isSwipedAll, setIsSwipedAll] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const [isDescVisible, setIsDescVisible] = useState(false);
-  const swiperRef = useRef(null);
+  
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedStyles, setSelectedStyles] = useState([]);
 
+  const toggleCategory = (category) => {
+    setSelectedCategories((prev) => 
+      prev.includes(category) 
+        ? prev.filter((item) => item !== category) 
+        : [...prev, category]
+    );
+  };
+
+  const toggleStyle = (style) => {
+    setSelectedStyles((prev) => 
+      prev.includes(style) 
+        ? prev.filter((item) => item !== style) 
+        : [...prev, style]
+    );
+  };
+
+  const swiperRef = useRef(null);
   const swipeX = useSharedValue(0);
   const isButtonPressed = useRef(false);
   const lockTimeout = useRef(null);
   const isZoomingAnim = useSharedValue(0);
 
-  // 加上這段：使用 expo-router 的 useFocusEffect 來監聽畫面失焦
   useFocusEffect(
     useCallback(() => {
-      // 進入此畫面時不需要特別做事
       return () => {
-        // 當離開此畫面 (切換 Tab) 時，把 Description 收起來
         setIsDescVisible(false);
+        setIsFilterExpanded(false);
       };
     }, [])
   );
@@ -148,31 +213,29 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     opacity: 1 - isZoomingAnim.value,
   }));
 
-  // X 按鈕背景與縮放
   const xButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.0], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [-150, 0],
-      ['rgb(255, 59, 48)', 'rgb(12, 12, 12)'] // 變成紅色背景
+      ['rgb(255, 59, 48)', 'rgb(12, 12, 12)']
     )
   }));
 
   const xIconStyle = useAnimatedStyle(() => ({
     color: interpolateColor(
       swipeX.value,
-      [-150, 0], // 在滑動接近到位時快速轉黑
+      [-150, 0],
       ['#000000', 'rgb(255, 59, 48)']
     )
   }));
 
-  // Heart 按鈕背景與縮放
   const heartButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.0, 1.5], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
-      ['rgb(12, 12, 12)', 'rgb(0, 255, 255)'] // 變成粉紫色背景
+      ['rgb(12, 12, 12)', 'rgb(0, 255, 255)']
     )
   }));
 
@@ -192,6 +255,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       if (selectedBrands?.size > 0) {
         selectedBrands.forEach(brand => params.append('brands', brand));
       }
+      
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
       const response = await fetch(url);
       const json = await response.json();
@@ -199,10 +263,13 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       const formData = json.map(item => ({
         id: item.origin_url,
         url: item.shopee_url,
-        img: item.img,
+        // 修改：確保 img 是一個陣列 (List)
+        img: Array.isArray(item.img) ? item.img : [item.img], 
         tag: item.tag,
         description: item.description,
-        brand: item.brand
+        brand: item.brand,
+        price: item.price,
+        icon: item.brand_icon
       }));
 
       setCards(formData);
@@ -289,6 +356,14 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.screenContainer}>
+        {isFilterExpanded && (
+          <TouchableOpacity 
+            style={styles.fullScreenDismiss} 
+            activeOpacity={1} 
+            onPress={() => setIsFilterExpanded(false)} 
+          />
+        )}
+
         <View style={styles.swiperContainer}>
           <Swiper
             ref={swiperRef}
@@ -322,8 +397,73 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         </View>
 
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, { zIndex: 20 }]} pointerEvents="box-none">
-          <View style={styles.headerInteractiveContainer} pointerEvents="none">
-            <Text style={styles.savedTitle}>探索</Text>
+          
+          <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
+            <View style={styles.headerRow}>
+              <Text style={styles.savedTitle}>探索</Text>
+              
+              <View style={styles.filterGroup}>
+                <View style={styles.filterContainer}>
+                  <TouchableOpacity
+                    style={styles.filterButton}
+                    onPress={() => setIsFilterExpanded(!isFilterExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterText}>篩選</Text>
+                    <Ionicons
+                      name="filter"
+                      size={16}
+                      color="rgba(255, 255, 255, 0.6)"
+                    />
+                  </TouchableOpacity>
+
+                  {isFilterExpanded && (
+                    <View style={styles.filterDropdown}>
+                      <Text style={styles.dropdownSectionTitle}>分類</Text>
+                      {['上身', '下身', '外套', '連身'].map((item) => {
+                        const isChecked = selectedCategories.includes(item);
+                        return (
+                          <TouchableOpacity 
+                            key={`cat-${item}`} 
+                            style={styles.checkboxRow}
+                            onPress={() => toggleCategory(item)}
+                          >
+                            <Text style={styles.filterOptionText}>{item}</Text>
+                            <Ionicons 
+                              name={isChecked ? "checkbox" : "square-outline"} 
+                              size={18} 
+                              color={isChecked ? "#00ffff" : "rgba(255,255,255,0.4)"} 
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+
+                      <View style={styles.dropdownDivider} />
+
+                      <Text style={styles.dropdownSectionTitle}>風格</Text>
+                      {['日系', '韓系', '美式', '簡約'].map((item) => {
+                        const isChecked = selectedStyles.includes(item);
+                        return (
+                          <TouchableOpacity 
+                            key={`style-${item}`} 
+                            style={styles.checkboxRow}
+                            onPress={() => toggleStyle(item)}
+                          >
+                            <Text style={styles.filterOptionText}>{item}</Text>
+                            <Ionicons 
+                              name={isChecked ? "checkbox" : "square-outline"} 
+                              size={18} 
+                              color={isChecked ? "#00ffff" : "rgba(255,255,255,0.4)"} 
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+
             {cards.length > 0 && (
               <Text style={styles.categorySubtitle}>
                 {cards[currentIndex]?.brand || '載入中...'}
@@ -331,7 +471,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             )}
           </View>
 
-          {/* 右下方按鈕群：由下而上分別是 Heart -> Share -> Up */}
           <ReanimatedTouchableOpacity style={[styles.fixedHeartWrapper, heartButtonStyle]} onPress={handlePressHeart}>
             <AnimatedIonicons name="heart-outline" size={width * 0.08} style={heartIconStyle} />
           </ReanimatedTouchableOpacity>
@@ -344,18 +483,20 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* 左側：Close */}
           <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
             <AnimatedIonicons name="close" size={width * 0.08} style={xIconStyle} />
           </ReanimatedTouchableOpacity>
 
-          {/* 中間：Buy Now */}
           <TouchableOpacity
             onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
             style={styles.fixedBuyNowWrapper}
           >
             <View style={styles.buyNowSolidButton}>
-              <Text style={styles.buyNowText}>馬上購買</Text>
+              <Text style={styles.buyNowText}>
+                {cards[currentIndex]?.price 
+                  ? `$${Number(cards[currentIndex].price).toLocaleString()}` 
+                  : '馬上購買'}
+              </Text>
             </View>
           </TouchableOpacity>
         </Reanimated.View>
@@ -373,6 +514,13 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: 'rgb(18, 18, 18)' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  fullScreenDismiss: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 25, 
+    backgroundColor: 'transparent',
+  },
+
   swiperContainer: { flex: 1, zIndex: 1 },
   swiperRoot: { backgroundColor: 'transparent' },
   card: { width: width, height: height, backgroundColor: '#2C2C2E', borderRadius: width * 0.09, overflow: 'hidden' },
@@ -381,12 +529,84 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     width: '100%',
-    zIndex: 20,
+    zIndex: 30, 
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 25,
-    backgroundColor: '#121212',
+    backgroundColor: 'rgba(18, 18, 18, 1)',
     paddingBottom: 15,
   },
+  
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  filterGroup: {
+    flexDirection: 'row',
+  },
+  filterContainer: {
+    position: 'relative',
+    zIndex: 40,
+    top: height * 0.005 
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  filterText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filterDropdown: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: 8,
+    backgroundColor: 'rgba(28, 28, 30, 0.98)',
+    borderRadius: 15,
+    paddingVertical: 10,
+    width: 140, 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  dropdownSectionTitle: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 10,
+    marginHorizontal: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  filterOptionText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+  },
+
   savedTitle: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -394,14 +614,16 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-    marginBottom: 22
   },
   categorySubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 22,
+    color: 'rgb(255,255,255)',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+    fontWeight: '700',
+    textAlign: 'center',
+    bottom: height*0.02
   },
 
   contentContainer: {
@@ -412,11 +634,47 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.18
   },
 
+  // 新增：上方小圓點的樣式
+  paginationContainer: {
+    position: 'absolute',
+    top: height * 0.15,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    zIndex: 10,
+    gap: 6
+  },
+  paginationDot: {
+    height: 4,
+    borderRadius: 2,
+  },
+  paginationDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 16,
+  },
+  paginationDotInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    width: 8,
+  },
+
   cardImage: {
     width: width,
-    aspectRatio: 0.8, // 3:4比例，讓圖片更高
+    aspectRatio: 0.8,
     maxHeight: height * 0.7,
     resizeMode: 'flex'
+  },
+  
+  brandIconWrapper: {
+    position: 'absolute',
+    bottom: height * 0.26, 
+    left: width * 0.03,    
+    zIndex: 10,
+  },
+  brandIcon: {
+    width: width * 0.2,            
+    height: width * 0.2,            
+    borderRadius: width * 0.2 * 0.12,      
   },
 
   tagWrapper: {
@@ -436,12 +694,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 4
   },
 
-  // 基礎佈局數值
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
   fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
 
-  // 右側垂直堆疊
-  // 1. 最底層: Heart
   fixedHeartWrapper: {
     position: 'absolute',
     bottom: height * 0.12,
@@ -453,7 +708,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  // 2. 中間層: Share (Heart 上方)
   fixedShareWrapper: {
     position: 'absolute',
     bottom: height * 0.18 + (buttonSize + spacing) * 2,
@@ -466,7 +720,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(12, 12, 12, 0.9)'
   },
-  // 3. 最上層: Up (Share 上方)
   fixedUpWrapper: {
     position: 'absolute',
     bottom: height * 0.18 + buttonSize + spacing,

@@ -4,6 +4,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const AppContext = createContext();
 
+// --- 新增：用來安全取得第一張圖片的 Helper 函式 ---
+const getFirstImg = (img) => {
+  if (!img) return null;
+  return Array.isArray(img) ? img[0] : img;
+};
+
 export function AppProvider({ children }) {
   const [savedItems, setSavedItems] = useState([]);
   const [cards, setCards] = useState([]);
@@ -17,7 +23,8 @@ export function AppProvider({ children }) {
   const [categories, setCategories] = useState([]);
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-  // 讀取以選取的品牌
+
+  // 讀取已選取的品牌
   useEffect(() => {
     const loadSelectedBrands = async () => {
       try {
@@ -34,6 +41,7 @@ export function AppProvider({ children }) {
 
     loadSelectedBrands();
   }, []);
+
   // 去後端讀取所有品牌
   useEffect(() => {
     const fetchCategories = async () => {
@@ -48,6 +56,7 @@ export function AppProvider({ children }) {
     };
     fetchCategories();
   }, [API_URL]);
+
   // 讀取最愛清單
   useEffect(() => {
     const loadSavedItems = async () => {
@@ -63,6 +72,7 @@ export function AppProvider({ children }) {
 
     loadSavedItems();
   }, []);
+
   // 請求通知權限
   useEffect(() => {
     requestNotificationPermission();
@@ -70,7 +80,6 @@ export function AppProvider({ children }) {
 
   const [currentOpenList, setCurrentOpenList] = useState('cards'); // 'cards' or 'saved'
 
-  // ... (toggleBrand, handleSave, handleRemoveSaved stay the same)
   const toggleBrand = (brandName) => {
     setSelectedBrands((prevSet) => {
       const newSet = new Set(prevSet);
@@ -87,9 +96,10 @@ export function AppProvider({ children }) {
     });
   };
 
+  // --- 修改：比對第一張照片避免重複 ---
   const handleSave = (item) => {
     setSavedItems((prevItems) => {
-      const isExisted = prevItems.find((i) => i.img === item.img);
+      const isExisted = prevItems.find((i) => getFirstImg(i.img) === getFirstImg(item.img));
       if (isExisted) return prevItems;
       const newItems = [item, ...prevItems];
       AsyncStorage.setItem('@saved_items', JSON.stringify(newItems))
@@ -98,9 +108,10 @@ export function AppProvider({ children }) {
     });
   };
 
+  // --- 修改：比對第一張照片來移除 ---
   const handleRemoveSaved = (itemToRemove) => {
     setSavedItems((prevItems) => {
-      const newItems = prevItems.filter((i) => i.img !== itemToRemove.img);
+      const newItems = prevItems.filter((i) => getFirstImg(i.img) !== getFirstImg(itemToRemove.img));
       AsyncStorage.setItem('@saved_items', JSON.stringify(newItems))
         .catch(error => console.error('儲存收藏清單失敗:', error));
       return newItems;
@@ -119,7 +130,11 @@ export function AppProvider({ children }) {
   };
 
   const currentList = currentOpenList === 'saved' ? savedItems : cards;
-  const openItemIndex = openedItem ? currentList.findIndex(i => i.img === openedItem.img) : -1;
+  
+  // --- 修改：比對第一張照片來尋找 index ---
+  const openItemIndex = openedItem 
+    ? currentList.findIndex(i => getFirstImg(i.img) === getFirstImg(openedItem.img)) 
+    : -1;
 
   const handleNextItem = () => {
     if (openItemIndex >= 0 && openItemIndex < currentList.length - 1) {
@@ -134,13 +149,19 @@ export function AppProvider({ children }) {
       setOriginLayout(null);
     }
   };
+
   // 請求通知權限
   const requestNotificationPermission = async () => {
     // 1. 檢查目前的權限狀態
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    // 2. 如果狀態不是 "granted" (已授權)，就發起請求
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    // 2. 如果狀態不是 "granted"(已授權)，就發起請求
     // if (finalStatus !== 'granted') {
     //   // 跳出我們自訂的警告視窗
     //   Alert.alert(
@@ -158,7 +179,7 @@ export function AppProvider({ children }) {
     //       }
     //     ]
     //   );
-    //   return
+    //   return; // <-- Added a semicolon here for clean syntax
     // }
   };
 

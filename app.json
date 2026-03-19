@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "i-Mall",
+    "name": "SwipeBuy",
     "slug": "I-TOY",
     "version": "0.1",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.apparel.digimall",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

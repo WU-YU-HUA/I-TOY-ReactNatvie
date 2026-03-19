@@ -29,7 +29,7 @@ const SavedItemCard = ({ item, index, onOpenItem }) => {
         activeOpacity={0.8}
         onPress={handlePress}
       >
-        <Image source={{ uri: item.img }} style={styles.savedItemImage} />
+        <Image source={{ uri: item.img[0] }} style={styles.savedItemImage} />
       </TouchableOpacity>
 
       {!!item.tag && (
