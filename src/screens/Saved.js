@@ -4,7 +4,10 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
-import OpenSaved from './OpenSaved'; // ✅ 1. 把 OpenSaved 重新引入
+import OpenSaved from './OpenSaved';
+
+import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 
 const { width } = Dimensions.get('window');
 const COLUMN_GAP = 15;
@@ -42,13 +45,13 @@ const SavedItemCard = ({ item, index, onOpenItem }) => {
 };
 
 export default function SavedScreen() {
-  // 從 Context 取得資料跟全域的 Save/Remove 函式
   const { savedItems, handleSave, handleRemoveSaved } = useAppContext();
 
-  // ✅ 2. 建立本地狀態，不干涉 GlobalUIWrapper
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
-  const [previewItem, setPreviewItem] = useState(null); // 獨立保存預覽的卡片
+  const [previewItem, setPreviewItem] = useState(null); 
+  
+  const [collapsedBrands, setCollapsedBrands] = useState({});
 
   useFocusEffect(
     useCallback(() => {
@@ -60,7 +63,47 @@ export default function SavedScreen() {
     }, [])
   );
 
-  // 本地的開啟邏輯
+  const brandMap = {};
+  savedItems.forEach(item => {
+    const b = item.brand || '未分類';
+    if (!brandMap[b]) {
+      brandMap[b] = { items: [], icon: item.icon };
+    }
+    brandMap[b].items.push(item);
+  });
+
+  const displayItems = [];
+  const sections = [];
+
+  Object.keys(brandMap).forEach(brand => {
+    const sectionItems = brandMap[brand].items;
+    const startIndex = displayItems.length;
+    
+    const categoryCount = { '上身': 0, '下身': 0, '連身': 0, '外套': 0, '其他': 0 };
+
+    sectionItems.forEach(item => {
+      displayItems.push(item);
+      const cat = item.category;
+      if (['上身', '下身', '連身', '外套'].includes(cat)) {
+        categoryCount[cat]++;
+      } else {
+        categoryCount['其他']++;
+      }
+    });
+
+    const summaryText = Object.entries(categoryCount)
+      .filter(([_, count]) => count > 0)
+      .map(([cat, count]) => `${cat}: ${count}件`)
+      .join(' · ');
+    
+    sections.push({
+      brand,
+      icon: brandMap[brand].icon,
+      summaryText, 
+      items: sectionItems.map((item, i) => ({ ...item, flatIndex: startIndex + i }))
+    });
+  });
+
   const handleLocalOpen = (item, layout, index) => {
     setOriginLayout(layout);
     setSelectedIndex(index);
@@ -74,10 +117,10 @@ export default function SavedScreen() {
   };
 
   const handleNext = () => {
-    if (selectedIndex !== null && selectedIndex < savedItems.length - 1) {
+    if (selectedIndex !== null && selectedIndex < displayItems.length - 1) {
       const nextIndex = selectedIndex + 1;
       setSelectedIndex(nextIndex);
-      setPreviewItem(savedItems[nextIndex]); // 更新預覽卡片
+      setPreviewItem(displayItems[nextIndex]); 
     }
   };
 
@@ -85,13 +128,16 @@ export default function SavedScreen() {
     if (selectedIndex !== null && selectedIndex > 0) {
       const prevIndex = selectedIndex - 1;
       setSelectedIndex(prevIndex);
-      setPreviewItem(savedItems[prevIndex]); // 更新預覽卡片
+      setPreviewItem(displayItems[prevIndex]); 
     }
   };
 
-  // ✅ 3. 核心邏輯：即時計算這張預覽中的卡片，是不是還在收藏陣列裡？
+  const toggleBrand = (brand) => {
+    setCollapsedBrands(prev => ({ ...prev, [brand]: !prev[brand] }));
+  };
+
   const isCurrentlySaved = previewItem 
-    ? savedItems.some(i => i.img === previewItem.img) 
+    ? savedItems.some(i => i.img[0] === previewItem.img[0]) 
     : false;
 
   return (
@@ -104,32 +150,75 @@ export default function SavedScreen() {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {savedItems.map((item, index) => (
-          <SavedItemCard
-            key={item.img + index}
-            item={item}
-            index={index}
-            onOpenItem={handleLocalOpen} // 呼叫本地的開啟函式
-          />
-        ))}
-        {savedItems.length % 2 !== 0 && <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />}
+        {sections.map(section => {
+          const isCollapsed = collapsedBrands[section.brand];
+          
+          return (
+            <View key={section.brand} style={styles.sectionContainer}>
+              
+              <TouchableOpacity 
+                style={styles.brandHeader} 
+                activeOpacity={0.8}
+                onPress={() => toggleBrand(section.brand)}
+              >
+                {/* 加上了自己的圓角和底色，保證照片不被切割 */}
+                {!!section.icon && (
+                  <View style={styles.brandIconWrapper}>
+                    <ExpoImage 
+                      source={{ uri: section.icon }} 
+                      style={styles.brandHeaderIcon} 
+                      cachePolicy="disk" 
+                      contentFit="contain" 
+                      transition={200}
+                    />
+                  </View>
+                )}
+                
+                <View style={styles.brandHeaderRight}>
+                  <View style={styles.brandHeaderTitleRow}>
+                    <Text style={styles.brandHeaderText} numberOfLines={1}>{section.brand}</Text>
+                    <Ionicons name={isCollapsed ? "chevron-down" : "chevron-up"} color="rgba(255,255,255,0.6)" size={24} />
+                  </View>
+                  
+                  {!!section.summaryText && (
+                    <Text style={styles.brandSummaryText}>{section.summaryText}</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {!isCollapsed && (
+                <View style={styles.gridContainer}>
+                  {section.items.map((item) => (
+                    <SavedItemCard
+                      key={item.img[0] + item.flatIndex}
+                      item={item}
+                      index={item.flatIndex} 
+                      onOpenItem={handleLocalOpen} 
+                    />
+                  ))}
+                  {section.items.length % 2 !== 0 && (
+                    <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
 
-      {/* ✅ 4. 本地渲染 OpenSaved，這樣它就會被限制在 Tab Bar 之內！ */}
       {previewItem && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
           <OpenSaved
             itemData={previewItem}
-            prevItemData={selectedIndex > 0 ? savedItems[selectedIndex - 1] : null}
-            nextItemData={selectedIndex < savedItems.length - 1 ? savedItems[selectedIndex + 1] : null}
+            prevItemData={selectedIndex > 0 ? displayItems[selectedIndex - 1] : null}
+            nextItemData={selectedIndex < displayItems.length - 1 ? displayItems[selectedIndex + 1] : null}
             onClose={handleLocalClose}
             originLayout={originLayout}
             onRemoveSaved={handleRemoveSaved}
             onSave={handleSave}
-            onNext={selectedIndex < savedItems.length - 1 ? handleNext : undefined}
+            onNext={selectedIndex < displayItems.length - 1 ? handleNext : undefined}
             onPrev={selectedIndex > 0 ? handlePrev : undefined}
-            
-            isSavedStatus={isCurrentlySaved} // 將真實狀態傳給 OpenSaved
+            isSavedStatus={isCurrentlySaved} 
           />
         </View>
       )}
@@ -141,9 +230,68 @@ const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: 'rgb(12, 12, 12)' },
   fullWidthHeader: { position: 'absolute', top: 0, width: '100%', zIndex: 20 },
   headerContent: { paddingTop: Platform.OS === 'ios' ? 80 : 60, paddingBottom: 30, paddingHorizontal: 25 },
-  scrollContent: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 160, paddingBottom: 130 },
+  
+  scrollContent: { paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 160, paddingBottom: 130 },
+  
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: 0, marginBottom: 22 },
   savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+  
+  sectionContainer: { marginBottom: 25, width: '100%' },
+  
+  // --- 修改：完美的包覆排版 ---
+  brandHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#1C1C1E', 
+    borderRadius: CARD_WIDTH * RATIO_RADIUS + 6, // 外框稍微大一點點的圓角
+    padding: 5, // 加上內距，讓背景把照片完美「框」起來
+  },
+  brandIconWrapper: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
+    borderRadius: CARD_WIDTH * RATIO_RADIUS, // 把屬於照片自己的圓角還給它
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', // 給透明的 PNG 一個微弱底色避免吃色
+    overflow: 'hidden', // 確保照片自己會乖乖待在圓角裡面
+    marginRight: 15,
+  },
+  brandHeaderIcon: {
+    width: '100%',
+    height: '100%',
+  },
+
+  brandHeaderRight: {
+    flex: 1,
+    justifyContent: 'center', 
+    paddingRight: 8, // 稍微推一點右邊距
+  },
+  brandHeaderTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10, 
+  },
+  brandHeaderText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  brandSummaryText: {
+    color: 'rgba(255, 255, 255, 0.5)', 
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  // ---------------------------------
+
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  
   savedItemContainer: { width: CARD_WIDTH, marginBottom: COLUMN_GAP + 10 },
   savedItemCard: { width: CARD_WIDTH, height: CARD_WIDTH * 1.4, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: '#1C1C1E', overflow: 'hidden' },
   savedItemImage: { width: '100%', height: '100%', resizeMode: 'cover' },

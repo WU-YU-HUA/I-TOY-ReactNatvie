@@ -5,6 +5,9 @@ import { Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, Touchabl
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+// --- 新增：引入 expo-image 並命名為 ExpoImage 避免衝突 ---
+import { Image as ExpoImage } from 'expo-image';
+
 import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
@@ -90,6 +93,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
           {!!currentImageUri && (
             <>
+              {/* 背景模糊層：維持原生 Image */}
               <Image
                 source={{ uri: currentImageUri }}
                 style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
@@ -103,9 +107,16 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
               <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             )}
 
+            {/* --- 修改：品牌 Icon 使用 ExpoImage 並強制快取 --- */}
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
-                <Image source={{ uri: card.icon }} style={styles.brandIcon} />
+                <ExpoImage 
+                  source={{ uri: card.icon }} 
+                  style={styles.brandIcon} 
+                  cachePolicy="disk" // 強制緩存在磁碟
+                  contentFit="cover" // 對應 resizeMode
+                  transition={200}   // 增加淡入質感
+                />
               </Reanimated.View>
             )}
 

@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
+// --- 新增：引入 expo-image 並命名為 ExpoImage ---
+import { Image as ExpoImage } from 'expo-image';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
@@ -168,9 +170,13 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                         isSelected && styles.cardSelected
                       ]}
                     >
-                      <Image
+                      {/* --- 修改：使用 ExpoImage 並加入快取與 contentFit --- */}
+                      <ExpoImage
                         source={{ uri: item.icon }}
                         style={styles.cardImage}
+                        cachePolicy="disk"
+                        contentFit="contain" // 取代原本 stylesheet 裡的 resizeMode
+                        transition={200}     // 加上淡入效果
                       />
                     </TouchableOpacity>
 
@@ -353,7 +359,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain'
+    // resizeMode: 'contain' // 移除了這裡的 resizeMode，改用元件上的 contentFit
   },
   activeTagText: {
     color: '#ffffff',

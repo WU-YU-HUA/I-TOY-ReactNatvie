@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
+  Image, // 原生的 Image，用來顯示商品照片(不強制快取)
   Linking,
   Platform,
   Share,
@@ -29,6 +29,9 @@ import Reanimated, {
   withTiming
 } from 'react-native-reanimated';
 
+// --- 新增：引入 expo-image 並命名為 ExpoImage 避免與原生 Image 衝突 ---
+import { Image as ExpoImage } from 'expo-image';
+
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 const buttonSize = Math.round(width * 0.13);
@@ -42,7 +45,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
-  // 新增：目前顯示的圖片索引
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
@@ -74,13 +76,12 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       translateY.value = withSpring(0, springConfig);
     });
 
-  // 處理單點擊切換圖片
   const handleSingleTap = useCallback((side) => {
     if (!card.img || card.img.length <= 1) return;
     if (side === 'right') {
-      setCurrentImgIndex((prev) => (prev + 1) % card.img.length); // 下一張，到底回第一張
+      setCurrentImgIndex((prev) => (prev + 1) % card.img.length);
     } else {
-      setCurrentImgIndex((prev) => (prev - 1 + card.img.length) % card.img.length); // 上一張，到底回最後一張
+      setCurrentImgIndex((prev) => (prev - 1 + card.img.length) % card.img.length);
     }
   }, [card.img]);
 
@@ -101,7 +102,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
       }
     });
 
-  // 使用 Exclusive 讓手勢系統優先判斷雙擊，如果不是雙擊才觸發單擊
   const tapGestures = Gesture.Exclusive(doubleTapGesture, singleTapGesture);
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGestures);
 
@@ -117,13 +117,13 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
     opacity: 1 - isZoomingAnim.value,
   }));
 
-  // 取得當前的圖片 URI
   const currentImageUri = card.img[currentImgIndex] || card.img[0];
 
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
+          {/* 背景模糊層：維持原生 Image */}
           <Image
             source={{ uri: currentImageUri }}
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
@@ -131,7 +131,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
 
           <View style={styles.contentContainer}>
-            {/* 新增：上方指示點 */}
             {card.img && card.img.length > 1 && (
               <View style={styles.paginationContainer}>
                 {card.img.map((_, idx) => (
@@ -146,11 +145,19 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
               </View>
             )}
 
+            {/* 主要商品圖片：維持原生 Image，避免佔用手機容量 */}
             <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             
+            {/* --- 修改：品牌 Icon 使用 ExpoImage 並強制快取 --- */}
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
-                <Image source={{ uri: card.icon }} style={styles.brandIcon} />
+                <ExpoImage 
+                  source={{ uri: card.icon }} 
+                  style={styles.brandIcon} 
+                  cachePolicy="disk" // 強制緩存在磁碟
+                  contentFit="cover" // 對應 resizeMode
+                  transition={200}   // 加上微微的淡入效果增加質感
+                />
               </Reanimated.View>
             )}
             
@@ -278,7 +285,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       const formData = json.map(item => ({
         id: item.id,
         url: item.shopee_url,
-        // 修改：確保 img 是一個陣列 (List)
         img: Array.isArray(item.img) ? item.img : [item.img], 
         tag: item.tag,
         price: item.price,
@@ -657,7 +663,6 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.18
   },
 
-  // 新增：上方小圓點的樣式
   paginationContainer: {
     position: 'absolute',
     top: height * 0.15,

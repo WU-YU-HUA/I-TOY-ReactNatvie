@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image'; // --- 新增：引入 expo-image ---
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const AppContext = createContext();
 
-// --- 新增：用來安全取得第一張圖片的 Helper 函式 ---
+// --- 用來安全取得第一張圖片的 Helper 函式 ---
 const getFirstImg = (img) => {
   if (!img) return null;
   return Array.isArray(img) ? img[0] : img;
@@ -50,6 +51,22 @@ export function AppProvider({ children }) {
         const response = await fetch(`${API_URL}/api/firebase/categories/`);
         const json = await response.json();
         setCategories(json);
+
+        // --- 新增：背景預載品牌 Icon ---
+        // 這裡我假設你的 API 回傳的圖片欄位叫做 'icon' 或 'img'
+        // 請依照你實際的 JSON 結構調整 (例如 brand.iconUrl 等)
+        if (json && json.length > 0) {
+          const urlsToPrefetch = json
+            .map(brand => getFirstImg(brand.img) || brand.icon)
+            .filter(url => typeof url === 'string'); // 過濾掉空值，確保是有效網址
+
+          if (urlsToPrefetch.length > 0) {
+            // 讓 expo-image 在背景把這些網址的圖片下載到手機磁碟快取中
+            Image.prefetch(urlsToPrefetch);
+          }
+        }
+        // ---------------------------------
+
       } catch (error) {
         console.error('Fetch categories error:', error);
       }
@@ -96,7 +113,6 @@ export function AppProvider({ children }) {
     });
   };
 
-  // --- 修改：比對第一張照片避免重複 ---
   const handleSave = (item) => {
     setSavedItems((prevItems) => {
       const isExisted = prevItems.find((i) => getFirstImg(i.img) === getFirstImg(item.img));
@@ -108,7 +124,6 @@ export function AppProvider({ children }) {
     });
   };
 
-  // --- 修改：比對第一張照片來移除 ---
   const handleRemoveSaved = (itemToRemove) => {
     setSavedItems((prevItems) => {
       const newItems = prevItems.filter((i) => getFirstImg(i.img) !== getFirstImg(itemToRemove.img));
@@ -131,7 +146,6 @@ export function AppProvider({ children }) {
 
   const currentList = currentOpenList === 'saved' ? savedItems : cards;
   
-  // --- 修改：比對第一張照片來尋找 index ---
   const openItemIndex = openedItem 
     ? currentList.findIndex(i => getFirstImg(i.img) === getFirstImg(openedItem.img)) 
     : -1;
@@ -152,7 +166,6 @@ export function AppProvider({ children }) {
 
   // 請求通知權限
   const requestNotificationPermission = async () => {
-    // 1. 檢查目前的權限狀態
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -160,27 +173,6 @@ export function AppProvider({ children }) {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-
-    // 2. 如果狀態不是 "granted"(已授權)，就發起請求
-    // if (finalStatus !== 'granted') {
-    //   // 跳出我們自訂的警告視窗
-    //   Alert.alert(
-    //     '需要通知權限',
-    //     '您目前關閉了通知。若要接收重要訊息，請前往手機的「設定」中手動開啟通知權限。',
-    //     [
-    //       {
-    //         text: '下次再說',
-    //         style: 'cancel'
-    //       },
-    //       {
-    //         text: '前往設定',
-    //         // 點擊後直接打開手機的設定頁面 (並自動定位到你的 App)
-    //         onPress: () => Linking.openSettings()
-    //       }
-    //     ]
-    //   );
-    //   return; // <-- Added a semicolon here for clean syntax
-    // }
   };
 
   return (
