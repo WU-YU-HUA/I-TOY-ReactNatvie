@@ -247,6 +247,21 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     )
   }));
 
+  const like_item = async (id) =>{
+    if (!id) return;
+    try{
+      const url = `${API_URL}/api/firebase/like/${id}/`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+    } catch(error){
+      console.error("Like Error:", error);
+    }
+  }
+
   const fetchData = async () => {
     setIsLoading(true);
     setIsSwipedAll(false);
@@ -261,14 +276,16 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       const json = await response.json();
 
       const formData = json.map(item => ({
-        id: item.origin_url,
+        id: item.id,
         url: item.shopee_url,
         // 修改：確保 img 是一個陣列 (List)
         img: Array.isArray(item.img) ? item.img : [item.img], 
         tag: item.tag,
-        description: item.description,
-        brand: item.brand,
         price: item.price,
+        description: item.description,
+        category: item.category,
+        style: item.style,
+        brand: item.brand,
         icon: item.brand_icon
       }));
 
@@ -371,7 +388,13 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             cardIndex={currentIndex}
             onSwiped={handleSwiped}
             onSwipedAll={() => setIsSwipedAll(true)}
-            onSwipedRight={(idx) => onSave(cards[idx])}
+            onSwipedRight={(idx) => {
+              const item = cards[idx];
+              if (item){
+                onSave(item);
+                like_item(item.id);
+              }
+            }}
             onSwiping={(x) => { if (!isButtonPressed.current) swipeX.value = x; }}
             onSwipedAborted={() => { if (!isButtonPressed.current) swipeX.value = withSpring(0); }}
             horizontalSwipe={!isZooming}
