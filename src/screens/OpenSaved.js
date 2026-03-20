@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
-    resizeMode: 'contain'
+    resizeMode: 'flex'
   },
   
   brandIconWrapper: {
