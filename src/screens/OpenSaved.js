@@ -5,9 +5,7 @@ import { Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, Touchabl
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
-// --- 新增：引入 expo-image 並命名為 ExpoImage 避免衝突 ---
 import { Image as ExpoImage } from 'expo-image';
-
 import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
@@ -16,7 +14,6 @@ const GAP = width * 0.1;
 const spacing = 20;
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
-  // 1. Handle legacy string data vs new array data safely
   const images = Array.isArray(card.img) ? card.img : [card.img];
   const [imgIndex, setImgIndex] = useState(0);
 
@@ -26,7 +23,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
 
-  // 2. Reset index if the underlying card data changes (e.g., swiping to next item)
   useEffect(() => {
     setImgIndex(0);
   }, [card]);
@@ -59,9 +55,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
       translateY.value = withSpring(0, springConfig);
     });
 
-  // 3. Tap Gesture for cycling images
   const tapGesture = Gesture.Tap().onEnd((event) => {
-    // Prevent cycling images if the user is currently zoomed in
     if (scale.value > 1.1) return; 
 
     if (event.x < width / 2) {
@@ -71,7 +65,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
     }
   });
 
-  // 4. Combine Tap seamlessly with Pinch and Pan
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -93,7 +86,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
           {!!currentImageUri && (
             <>
-              {/* 背景模糊層：維持原生 Image */}
               <Image
                 source={{ uri: currentImageUri }}
                 style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
@@ -107,15 +99,14 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
               <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             )}
 
-            {/* --- 修改：品牌 Icon 使用 ExpoImage 並強制快取 --- */}
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
                 <ExpoImage 
                   source={{ uri: card.icon }} 
                   style={styles.brandIcon} 
-                  cachePolicy="disk" // 強制緩存在磁碟
-                  contentFit="cover" // 對應 resizeMode
-                  transition={200}   // 增加淡入質感
+                  cachePolicy="disk" 
+                  contentFit="cover" 
+                  transition={200}  
                 />
               </Reanimated.View>
             )}
@@ -163,13 +154,31 @@ export default function OpenSaved({
     });
   };
 
+  // --- 修改：加入視覺動畫的愛心切換邏輯 ---
   const handleToggleHeart = () => {
     if (isSavedStatus) {
-      if (onRemoveSaved) onRemoveSaved(itemData);
+      if (nextItemData) {
+        // 1. 有下一張：向左滑動動畫
+        swipeTranslateX.value = withTiming(-(width + GAP), { duration: 250 }, () => {
+          swipeTranslateX.value = 0; // 重置 X 軸，讓畫面為下一張作好準備
+          runOnJS(onRemoveSaved)(itemData); 
+        });
+      } else if (prevItemData) {
+        // 2. 只有上一張：向右滑動動畫
+        swipeTranslateX.value = withTiming(width + GAP, { duration: 250 }, () => {
+          swipeTranslateX.value = 0;
+          runOnJS(onRemoveSaved)(itemData);
+        });
+      } else {
+        // 3. 全空了：直接關閉
+        runOnJS(handleClose)();
+        runOnJS(onRemoveSaved)(itemData);
+      }
     } else {
       if (onSave) onSave(itemData);
     }
   };
+  // ----------------------------------------
 
   const handleShare = async () => {
     if (!itemData) return;
@@ -322,7 +331,6 @@ export default function OpenSaved({
 
           <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
 
-            {/* --- 頂部黑色背景區塊 --- */}
             <View style={styles.headerInteractiveContainer} pointerEvents="none">
                 <Text style={styles.savedTitle}>收藏</Text>
                 {!!itemData.brand && (
@@ -429,7 +437,7 @@ const styles = StyleSheet.create({
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
-    resizeMode: 'flex'
+    resizeMode: 'flex' // 記得統一下 Discover.js 那邊的屬性喔！
   },
   
   brandIconWrapper: {

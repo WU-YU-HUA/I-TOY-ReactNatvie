@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react'; // 加上 useEffect
 import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
@@ -136,6 +136,29 @@ export default function SavedScreen() {
     setCollapsedBrands(prev => ({ ...prev, [brand]: !prev[brand] }));
   };
 
+  // --- 新增：監聽收藏清單變化，處理刪除後的自動遞補 ---
+  useEffect(() => {
+    if (selectedIndex !== null && previewItem) {
+      // 確認現在預覽的商品是不是真的已經被刪除了
+      const stillExists = savedItems.find(item => item.img[0] === previewItem.img[0]);
+      
+      if (!stillExists) {
+        if (displayItems.length === 0) {
+          // 如果全部刪光了，直接關閉
+          handleLocalClose();
+        } else {
+          // 因為 displayItems 已經是刪除後的新陣列，
+          // 我們只要確保 selectedIndex 不要超出新陣列的長度就好。
+          // 原本的 selectedIndex 現在會自動指向上一個（或遞補上來的下一個）商品
+          const newIndex = Math.min(selectedIndex, displayItems.length - 1);
+          setSelectedIndex(newIndex);
+          setPreviewItem(displayItems[newIndex]);
+        }
+      }
+    }
+  }, [savedItems, displayItems, selectedIndex, previewItem]);
+  // --------------------------------------------------
+
   const isCurrentlySaved = previewItem 
     ? savedItems.some(i => i.img[0] === previewItem.img[0]) 
     : false;
@@ -238,21 +261,20 @@ const styles = StyleSheet.create({
   
   sectionContainer: { marginBottom: 25, width: '100%' },
   
-  // --- 修改：完美的包覆排版 ---
   brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
     backgroundColor: '#1C1C1E', 
-    borderRadius: CARD_WIDTH * RATIO_RADIUS + 6, // 外框稍微大一點點的圓角
-    padding: 5, // 加上內距，讓背景把照片完美「框」起來
+    borderRadius: CARD_WIDTH * RATIO_RADIUS + 6, 
+    padding: 5, 
   },
   brandIconWrapper: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
-    borderRadius: CARD_WIDTH * RATIO_RADIUS, // 把屬於照片自己的圓角還給它
-    backgroundColor: 'rgba(255, 255, 255, 0.05)', // 給透明的 PNG 一個微弱底色避免吃色
-    overflow: 'hidden', // 確保照片自己會乖乖待在圓角裡面
+    borderRadius: CARD_WIDTH * RATIO_RADIUS, 
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+    overflow: 'hidden', 
     marginRight: 15,
   },
   brandHeaderIcon: {
@@ -263,7 +285,7 @@ const styles = StyleSheet.create({
   brandHeaderRight: {
     flex: 1,
     justifyContent: 'center', 
-    paddingRight: 8, // 稍微推一點右邊距
+    paddingRight: 8, 
   },
   brandHeaderTitleRow: {
     flexDirection: 'row',
@@ -284,7 +306,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '500',
   },
-  // ---------------------------------
 
   gridContainer: {
     flexDirection: 'row',
