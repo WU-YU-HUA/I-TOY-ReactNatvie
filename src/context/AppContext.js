@@ -1,11 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image'; // --- 新增：引入 expo-image ---
+import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const AppContext = createContext();
 
-// --- 用來安全取得第一張圖片的 Helper 函式 ---
 const getFirstImg = (img) => {
   if (!img) return null;
   return Array.isArray(img) ? img[0] : img;
@@ -22,6 +21,9 @@ export function AppProvider({ children }) {
   const [selectedBrands, setSelectedBrands] = useState(new Set());
   const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
+
+  // --- 新增：reFetch 狀態 ---
+  const [reFetch, setReFetch] = useState(false);
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
@@ -52,21 +54,15 @@ export function AppProvider({ children }) {
         const json = await response.json();
         setCategories(json);
 
-        // --- 新增：背景預載品牌 Icon ---
-        // 這裡我假設你的 API 回傳的圖片欄位叫做 'icon' 或 'img'
-        // 請依照你實際的 JSON 結構調整 (例如 brand.iconUrl 等)
         if (json && json.length > 0) {
           const urlsToPrefetch = json
             .map(brand => getFirstImg(brand.img) || brand.icon)
-            .filter(url => typeof url === 'string'); // 過濾掉空值，確保是有效網址
+            .filter(url => typeof url === 'string');
 
           if (urlsToPrefetch.length > 0) {
-            // 讓 expo-image 在背景把這些網址的圖片下載到手機磁碟快取中
             Image.prefetch(urlsToPrefetch);
           }
         }
-        // ---------------------------------
-
       } catch (error) {
         console.error('Fetch categories error:', error);
       }
@@ -95,7 +91,7 @@ export function AppProvider({ children }) {
     requestNotificationPermission();
   }, []);
 
-  const [currentOpenList, setCurrentOpenList] = useState('cards'); // 'cards' or 'saved'
+  const [currentOpenList, setCurrentOpenList] = useState('cards');
 
   const toggleBrand = (brandName) => {
     setSelectedBrands((prevSet) => {
@@ -111,6 +107,9 @@ export function AppProvider({ children }) {
 
       return newSet;
     });
+    
+    // --- 新增：變更品牌時，將 reFetch 設為 true ---
+    setReFetch(true);
   };
 
   const handleSave = (item) => {
@@ -164,7 +163,6 @@ export function AppProvider({ children }) {
     }
   };
 
-  // 請求通知權限
   const requestNotificationPermission = async () => {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -201,6 +199,8 @@ export function AppProvider({ children }) {
         handlePrevItem,
         currentList,
         openItemIndex,
+        reFetch,     // --- 新增：將 reFetch 拋出 ---
+        setReFetch,  // --- 新增：將 setReFetch 拋出 ---
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react'; // 加上 useEffect
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
@@ -47,6 +47,7 @@ const SavedItemCard = ({ item, index, onOpenItem }) => {
 export default function SavedScreen() {
   const { savedItems, handleSave, handleRemoveSaved } = useAppContext();
 
+  // 這裡的 selectedIndex 代表的是「在當前品牌中的區域 index」
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
   const [previewItem, setPreviewItem] = useState(null); 
@@ -63,6 +64,7 @@ export default function SavedScreen() {
     }, [])
   );
 
+  // 整理分類資料
   const brandMap = {};
   savedItems.forEach(item => {
     const b = item.brand || '未分類';
@@ -72,17 +74,13 @@ export default function SavedScreen() {
     brandMap[b].items.push(item);
   });
 
-  const displayItems = [];
   const sections = [];
-
   Object.keys(brandMap).forEach(brand => {
     const sectionItems = brandMap[brand].items;
-    const startIndex = displayItems.length;
     
     const categoryCount = { '上身': 0, '下身': 0, '連身': 0, '外套': 0, '其他': 0 };
 
     sectionItems.forEach(item => {
-      displayItems.push(item);
       const cat = item.category;
       if (['上身', '下身', '連身', '外套'].includes(cat)) {
         categoryCount[cat]++;
@@ -100,13 +98,13 @@ export default function SavedScreen() {
       brand,
       icon: brandMap[brand].icon,
       summaryText, 
-      items: sectionItems.map((item, i) => ({ ...item, flatIndex: startIndex + i }))
+      items: sectionItems // 直接保留區域陣列
     });
   });
 
   const handleLocalOpen = (item, layout, index) => {
     setOriginLayout(layout);
-    setSelectedIndex(index);
+    setSelectedIndex(index); // 存入該品牌的區域 index
     setPreviewItem(item);
   };
 
@@ -116,11 +114,15 @@ export default function SavedScreen() {
     setPreviewItem(null);
   };
 
+  // 只從當前品牌陣列中取得上/下一張
+  const currentBrand = previewItem?.brand || '未分類';
+  const currentBrandItems = previewItem ? (brandMap[currentBrand]?.items || []) : [];
+
   const handleNext = () => {
-    if (selectedIndex !== null && selectedIndex < displayItems.length - 1) {
+    if (selectedIndex !== null && selectedIndex < currentBrandItems.length - 1) {
       const nextIndex = selectedIndex + 1;
       setSelectedIndex(nextIndex);
-      setPreviewItem(displayItems[nextIndex]); 
+      setPreviewItem(currentBrandItems[nextIndex]); 
     }
   };
 
@@ -128,7 +130,7 @@ export default function SavedScreen() {
     if (selectedIndex !== null && selectedIndex > 0) {
       const prevIndex = selectedIndex - 1;
       setSelectedIndex(prevIndex);
-      setPreviewItem(displayItems[prevIndex]); 
+      setPreviewItem(currentBrandItems[prevIndex]); 
     }
   };
 
@@ -136,32 +138,35 @@ export default function SavedScreen() {
     setCollapsedBrands(prev => ({ ...prev, [brand]: !prev[brand] }));
   };
 
-  // --- 新增：監聽收藏清單變化，處理刪除後的自動遞補 ---
+  // 監聽刪除動作，限制在同一個品牌內遞補
   useEffect(() => {
     if (selectedIndex !== null && previewItem) {
-      // 確認現在預覽的商品是不是真的已經被刪除了
       const stillExists = savedItems.find(item => item.img[0] === previewItem.img[0]);
       
       if (!stillExists) {
-        if (displayItems.length === 0) {
-          // 如果全部刪光了，直接關閉
+        // 從新陣列抓取屬於「當前品牌」的剩餘商品
+        const newBrandItems = savedItems.filter(i => (i.brand || '未分類') === (previewItem.brand || '未分類'));
+
+        if (newBrandItems.length === 0) {
+          // 如果這個品牌空了，直接關閉預覽
           handleLocalClose();
         } else {
-          // 因為 displayItems 已經是刪除後的新陣列，
-          // 我們只要確保 selectedIndex 不要超出新陣列的長度就好。
-          // 原本的 selectedIndex 現在會自動指向上一個（或遞補上來的下一個）商品
-          const newIndex = Math.min(selectedIndex, displayItems.length - 1);
+          // 確保 index 不會超出新的該品牌陣列長度
+          const newIndex = Math.min(selectedIndex, newBrandItems.length - 1);
           setSelectedIndex(newIndex);
-          setPreviewItem(displayItems[newIndex]);
+          setPreviewItem(newBrandItems[newIndex]);
         }
       }
     }
-  }, [savedItems, displayItems, selectedIndex, previewItem]);
-  // --------------------------------------------------
+  }, [savedItems, selectedIndex, previewItem]); 
 
   const isCurrentlySaved = previewItem 
     ? savedItems.some(i => i.img[0] === previewItem.img[0]) 
     : false;
+
+  // 動態算出傳給 OpenSaved 的資料
+  const prevItemData = selectedIndex > 0 ? currentBrandItems[selectedIndex - 1] : null;
+  const nextItemData = selectedIndex !== null && selectedIndex < currentBrandItems.length - 1 ? currentBrandItems[selectedIndex + 1] : null;
 
   return (
     <View style={styles.screenContainer}>
@@ -173,18 +178,20 @@ export default function SavedScreen() {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {sections.map(section => {
+        {sections.map((section, index) => {
           const isCollapsed = collapsedBrands[section.brand];
           
           return (
             <View key={section.brand} style={styles.sectionContainer}>
               
+              {/* --- 第一個品牌以外，加上分隔線 --- */}
+              {index > 0 && <View style={styles.divider} />}
+
               <TouchableOpacity 
                 style={styles.brandHeader} 
                 activeOpacity={0.8}
                 onPress={() => toggleBrand(section.brand)}
               >
-                {/* 加上了自己的圓角和底色，保證照片不被切割 */}
                 {!!section.icon && (
                   <View style={styles.brandIconWrapper}>
                     <ExpoImage 
@@ -211,11 +218,11 @@ export default function SavedScreen() {
 
               {!isCollapsed && (
                 <View style={styles.gridContainer}>
-                  {section.items.map((item) => (
+                  {section.items.map((item, localIndex) => (
                     <SavedItemCard
-                      key={item.img[0] + item.flatIndex}
+                      key={item.img[0] + localIndex}
                       item={item}
-                      index={item.flatIndex} 
+                      index={localIndex} 
                       onOpenItem={handleLocalOpen} 
                     />
                   ))}
@@ -233,14 +240,14 @@ export default function SavedScreen() {
         <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
           <OpenSaved
             itemData={previewItem}
-            prevItemData={selectedIndex > 0 ? displayItems[selectedIndex - 1] : null}
-            nextItemData={selectedIndex < displayItems.length - 1 ? displayItems[selectedIndex + 1] : null}
+            prevItemData={prevItemData}   
+            nextItemData={nextItemData}   
             onClose={handleLocalClose}
             originLayout={originLayout}
             onRemoveSaved={handleRemoveSaved}
             onSave={handleSave}
-            onNext={selectedIndex < displayItems.length - 1 ? handleNext : undefined}
-            onPrev={selectedIndex > 0 ? handlePrev : undefined}
+            onNext={nextItemData ? handleNext : undefined}
+            onPrev={prevItemData ? handlePrev : undefined}
             isSavedStatus={isCurrentlySaved} 
           />
         </View>
@@ -261,6 +268,14 @@ const styles = StyleSheet.create({
   
   sectionContainer: { marginBottom: 25, width: '100%' },
   
+  // --- 分隔線樣式 ---
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: 25,
+    marginHorizontal: 10,
+  },
+  
   brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -270,8 +285,8 @@ const styles = StyleSheet.create({
     padding: 5, 
   },
   brandIconWrapper: {
-    width: CARD_WIDTH,
-    height: CARD_WIDTH,
+    width: CARD_WIDTH *2/3,
+    height: CARD_WIDTH*2/3,
     borderRadius: CARD_WIDTH * RATIO_RADIUS, 
     backgroundColor: 'rgba(255, 255, 255, 0.05)', 
     overflow: 'hidden', 

@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image, // 原生的 Image，用來顯示商品照片(不強制快取)
+  Image,
   Linking,
   Platform,
   Share,
@@ -29,8 +29,8 @@ import Reanimated, {
   withTiming
 } from 'react-native-reanimated';
 
-// --- 新增：引入 expo-image 並命名為 ExpoImage 避免與原生 Image 衝突 ---
 import { Image as ExpoImage } from 'expo-image';
+import { useAppContext } from '../context/AppContext'; // --- 新增：引入 useAppContext ---
 
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
@@ -123,7 +123,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
-          {/* 背景模糊層：維持原生 Image */}
           <Image
             source={{ uri: currentImageUri }}
             style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
@@ -145,18 +144,16 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
               </View>
             )}
 
-            {/* 主要商品圖片：維持原生 Image，避免佔用手機容量 */}
             <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             
-            {/* --- 修改：品牌 Icon 使用 ExpoImage 並強制快取 --- */}
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
                 <ExpoImage 
                   source={{ uri: card.icon }} 
                   style={styles.brandIcon} 
-                  cachePolicy="disk" // 強制緩存在磁碟
-                  contentFit="cover" // 對應 resizeMode
-                  transition={200}   // 加上微微的淡入效果增加質感
+                  cachePolicy="disk"
+                  contentFit="cover"
+                  transition={200}
                 />
               </Reanimated.View>
             )}
@@ -176,6 +173,8 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 };
 
 export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex, selectedBrands }) {
+  const { reFetch, setReFetch } = useAppContext(); // --- 新增：取得 reFetch 狀態 ---
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSwipedAll, setIsSwipedAll] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
@@ -207,13 +206,75 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const lockTimeout = useRef(null);
   const isZoomingAnim = useSharedValue(0);
 
+  const fetchData = async () => {
+    setIsLoading(true);
+    setIsSwipedAll(false);
+    try {
+      const params = new URLSearchParams();
+      if (selectedBrands?.size > 0) {
+        selectedBrands.forEach(brand => params.append('brands', brand));
+      }
+      
+      const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
+      const response = await fetch(url);
+      const json = await response.json();
+
+      const formData = json.map(item => ({
+        id: item.id,
+        url: item.shopee_url,
+        img: Array.isArray(item.img) ? item.img : [item.img], 
+        tag: item.tag,
+        price: item.price,
+        description: item.description,
+        category: item.category,
+        style: item.style,
+        brand: item.brand,
+        icon: item.brand_icon
+      }));
+
+      // --- 修改區域：實作保留當前卡片的邏輯 ---
+      
+      // 取得畫面當前正在顯示的卡片
+      const currentCard = cards[currentIndex];
+
+      // 判斷條件：如果有當前卡片，且 (未選擇任何品牌 或 該卡片品牌在選擇的品牌清單內)
+      if (currentCard && (selectedBrands.size === 0 || selectedBrands.has(currentCard.brand))) {
+        
+        // 為了避免後端回傳的新資料裡面又包含了當前這張卡片導致重複，我們用 id 把重複的濾掉
+        const filteredFormData = formData.filter(item => item.id !== currentCard.id);
+        
+        // 保留當前卡片在第一位，把新的資料加在後面
+        setCards([currentCard, ...filteredFormData]);
+        setCurrentIndex(0); // 因為當前卡片被移到 index 0 了，所以把指標歸零
+        
+      } else {
+        // 如果條件不符（例如該卡片的品牌被取消勾選了），就全部替換成新資料
+        setCards(formData);
+        setCurrentIndex(0);
+      }
+      
+      // ----------------------------------------
+
+    } catch (error) {
+      console.error("Fetch Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
+      // --- 新增：回到畫面時檢查是否需要重新載入 ---
+      if (reFetch) {
+        fetchData();
+        setReFetch(false); // 執行完後重置開關
+      }
+
       return () => {
         setIsDescVisible(false);
         setIsFilterExpanded(false);
       };
-    }, [])
+    }, [reFetch, selectedBrands]) // 加上依賴陣列
   );
 
   const uiAnimatedStyle = useAnimatedStyle(() => ({
@@ -268,41 +329,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       console.error("Like Error:", error);
     }
   }
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    setIsSwipedAll(false);
-    try {
-      const params = new URLSearchParams();
-      if (selectedBrands?.size > 0) {
-        selectedBrands.forEach(brand => params.append('brands', brand));
-      }
-      
-      const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
-      const response = await fetch(url);
-      const json = await response.json();
-
-      const formData = json.map(item => ({
-        id: item.id,
-        url: item.shopee_url,
-        img: Array.isArray(item.img) ? item.img : [item.img], 
-        tag: item.tag,
-        price: item.price,
-        description: item.description,
-        category: item.category,
-        style: item.style,
-        brand: item.brand,
-        icon: item.brand_icon
-      }));
-
-      setCards(formData);
-      setCurrentIndex(0);
-    } catch (error) {
-      console.error("Fetch Error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (cards.length === 0 && !isSwipedAll) fetchData();

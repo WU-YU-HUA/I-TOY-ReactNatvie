@@ -11,7 +11,6 @@ import {
   View
 } from 'react-native';
 
-// --- 新增：引入 expo-image 並命名為 ExpoImage ---
 import { Image as ExpoImage } from 'expo-image';
 
 const { width, height } = Dimensions.get('window');
@@ -21,10 +20,8 @@ const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
 export default function CategoryScreen({ categories, selectedBrands, onToggleBrand }) {
-  // 原本用來渲染清單的邏輯 (保留預設載入)
   const [activeCategory, setActiveCategory] = useState(null);
   
-  // --- 與 Discover.js 一模一樣的篩選狀態 ---
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedStyles, setSelectedStyles] = useState([]);
@@ -35,7 +32,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
     }
   }, [categories]);
 
-  // --- 與 Discover.js 一模一樣的切換邏輯 ---
   const toggleCategory = (category) => {
     setSelectedCategories((prev) => 
       prev.includes(category) 
@@ -64,7 +60,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
   return (
     <View style={styles.screenContainer}>
-      {/* 全螢幕透明遮罩：點擊空白處收回選單 */}
       {isFilterExpanded && (
         <TouchableOpacity 
           style={styles.fullScreenDismiss} 
@@ -102,7 +97,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
             {isFilterExpanded && (
               <View style={styles.filterDropdown}>
-                {/* --- 分類區塊 --- */}
                 <Text style={styles.dropdownSectionTitle}>分類</Text>
                 {['上身', '下身', '外套', '連身'].map((item) => {
                   const isChecked = selectedCategories.includes(item);
@@ -124,7 +118,6 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
 
                 <View style={styles.dropdownDivider} />
 
-                {/* --- 風格區塊 --- */}
                 <Text style={styles.dropdownSectionTitle}>風格</Text>
                 {['日系', '韓系', '美式', '簡約'].map((item) => {
                   const isChecked = selectedStyles.includes(item);
@@ -170,13 +163,12 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                         isSelected && styles.cardSelected
                       ]}
                     >
-                      {/* --- 修改：使用 ExpoImage 並加入快取與 contentFit --- */}
                       <ExpoImage
                         source={{ uri: item.icon }}
                         style={styles.cardImage}
                         cachePolicy="disk"
-                        contentFit="contain" // 取代原本 stylesheet 裡的 resizeMode
-                        transition={200}     // 加上淡入效果
+                        contentFit="contain"
+                        transition={200} 
                       />
                     </TouchableOpacity>
 
@@ -359,7 +351,6 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
-    // resizeMode: 'contain' // 移除了這裡的 resizeMode，改用元件上的 contentFit
   },
   activeTagText: {
     color: '#ffffff',
