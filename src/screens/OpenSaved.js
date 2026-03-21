@@ -17,15 +17,19 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   const images = Array.isArray(card.img) ? card.img : [card.img];
   const [imgIndex, setImgIndex] = useState(0);
 
+  // --- 優化：移除 useEffect，改在 render 階段直接更新，解決卡片切換時閃一幀的舊圖問題 ---
+  const [prevCardUri, setPrevCardUri] = useState(images[0]);
+  if (images[0] !== prevCardUri) {
+    setImgIndex(0);
+    setPrevCardUri(images[0]);
+  }
+  // -----------------------------------------------------------------------------------
+
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
-
-  useEffect(() => {
-    setImgIndex(0);
-  }, [card]);
 
   const handleNextImage = () => setImgIndex((prev) => (prev + 1) % images.length);
   const handlePrevImage = () => setImgIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -90,7 +94,11 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
                 source={{ uri: currentImageUri }}
                 style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]}
               />
-              <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+              {isActive ? (
+                <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+              ) : (
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 20, 20, 0.95)' }]} />
+              )}
             </>
           )}
 
@@ -101,6 +109,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
+                {/* 保留你原本的 ExpoImage */}
                 <ExpoImage 
                   source={{ uri: card.icon }} 
                   style={styles.brandIcon} 
@@ -154,7 +163,6 @@ export default function OpenSaved({
     });
   };
 
-  // --- 修改：加入視覺動畫的愛心切換邏輯 ---
   const handleToggleHeart = () => {
     if (isSavedStatus) {
       if (nextItemData) {
@@ -178,7 +186,6 @@ export default function OpenSaved({
       if (onSave) onSave(itemData);
     }
   };
-  // ----------------------------------------
 
   const handleShare = async () => {
     if (!itemData) return;
@@ -437,7 +444,7 @@ const styles = StyleSheet.create({
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
-    resizeMode: 'flex' // 記得統一下 Discover.js 那邊的屬性喔！
+    resizeMode: 'flex' 
   },
   
   brandIconWrapper: {

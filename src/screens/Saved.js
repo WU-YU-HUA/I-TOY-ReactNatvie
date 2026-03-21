@@ -266,20 +266,19 @@ const styles = StyleSheet.create({
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: 0, marginBottom: 22 },
   savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
   
-  sectionContainer: { marginBottom: 25, width: '100%' },
+  sectionContainer: { width: '100%' },
   
   // --- 分隔線樣式 ---
   divider: {
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: 25,
+    marginVertical: 20,
     marginHorizontal: 10,
   },
   
   brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
     backgroundColor: '#1C1C1E', 
     borderRadius: CARD_WIDTH * RATIO_RADIUS + 6, 
     padding: 5, 
@@ -328,7 +327,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   
-  savedItemContainer: { width: CARD_WIDTH, marginBottom: COLUMN_GAP + 10 },
+  savedItemContainer: { width: CARD_WIDTH, marginTop: COLUMN_GAP + 10 },
   savedItemCard: { width: CARD_WIDTH, height: CARD_WIDTH * 1.4, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: '#1C1C1E', overflow: 'hidden' },
   savedItemImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   itemTagWrapperOutside: { width: '100%', height: 48, marginTop: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 8, paddingHorizontal: 6 },
