@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native'; // --- 新增：引入 Alert ---
+import { Alert } from 'react-native';
 
 const AppContext = createContext();
 
@@ -10,6 +10,10 @@ const getFirstImg = (img) => {
   if (!img) return null;
   return Array.isArray(img) ? img[0] : img;
 };
+
+// --- 新增：把篩選選項定義在這裡，以後只要維護這裡即可 ---
+const FILTER_CATEGORY_OPTIONS = ["0-200", "200+"];
+const FILTER_STYLE_OPTIONS = ['最新'];
 
 export function AppProvider({ children }) {
   const [savedItems, setSavedItems] = useState([]);
@@ -22,6 +26,10 @@ export function AppProvider({ children }) {
   const [selectedBrands, setSelectedBrands] = useState(new Set());
   const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
+
+  // 共用的篩選狀態
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedStyles, setSelectedStyles] = useState([]);
 
   const [reFetch, setReFetch] = useState(false);
 
@@ -84,8 +92,6 @@ export function AppProvider({ children }) {
     loadSavedItems();
   }, []);
 
-  // --- 刪除原本在這裡的 useEffect (requestNotificationPermission) ---
-
   const [currentOpenList, setCurrentOpenList] = useState('cards');
 
   const toggleBrand = (brandName) => {
@@ -103,6 +109,24 @@ export function AppProvider({ children }) {
       return newSet;
     });
     
+    setReFetch(true);
+  };
+
+  const toggleCategory = (category) => {
+    setSelectedCategories((prev) => 
+      prev.includes(category) 
+        ? prev.filter((item) => item !== category) 
+        : [...prev, category]
+    );
+    setReFetch(true);
+  };
+
+  const toggleStyle = (style) => {
+    setSelectedStyles((prev) => 
+      prev.includes(style) 
+        ? prev.filter((item) => item !== style) 
+        : [...prev, style]
+    );
     setReFetch(true);
   };
 
@@ -157,43 +181,35 @@ export function AppProvider({ children }) {
     }
   };
 
-  // --- 改寫：加入自訂訊息與判斷是否為第一次 ---
   const requestNotificationPermission = async () => {
     try {
-      // 1. 檢查是否已經詢問過
       const hasPrompted = await AsyncStorage.getItem('@has_prompted_notification');
       if (hasPrompted === 'true') return; 
 
-      // 2. 檢查目前的系統權限狀態
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       
-      // 如果還沒授權過，就跳出我們的自訂 Alert
       if (existingStatus !== 'granted') {
         Alert.alert(
-          "開啟通知接收最新資訊", // 自訂標題
-          "為了讓您不錯過收藏項目的最新狀態與優惠，請允許我們發送通知給您！", // 自訂內容
+          "開啟通知接收最新資訊", 
+          "為了讓您不錯過收藏項目的最新狀態與優惠，請允許我們發送通知給您！", 
           [
             {
               text: "晚點再說",
               style: "cancel",
               onPress: () => {
-                // 使用者拒絕，紀錄起來，下次就不會再跳了
                 AsyncStorage.setItem('@has_prompted_notification', 'true');
               }
             },
             {
               text: "好，開啟通知",
               onPress: async () => {
-                // 使用者同意，這時才呼叫系統的原生權限視窗
                 await Notifications.requestPermissionsAsync();
-                // 紀錄已經詢問過
                 await AsyncStorage.setItem('@has_prompted_notification', 'true');
               }
             }
           ]
         );
       } else {
-        // 如果原本系統就已經允許了，也要紀錄一下避免重複跑邏輯
         await AsyncStorage.setItem('@has_prompted_notification', 'true');
       }
     } catch (error) {
@@ -229,7 +245,13 @@ export function AppProvider({ children }) {
         openItemIndex,
         reFetch,
         setReFetch,
-        requestNotificationPermission // --- 新增：拋出這個 function 給 Saved.js 用 ---
+        requestNotificationPermission,
+        selectedCategories,    
+        selectedStyles,        
+        toggleCategory,        
+        toggleStyle,
+        FILTER_CATEGORY_OPTIONS, // --- 拋出清單，讓其他頁面抓 ---
+        FILTER_STYLE_OPTIONS     // --- 拋出清單，讓其他頁面抓 ---
       }}
     >
       {children}

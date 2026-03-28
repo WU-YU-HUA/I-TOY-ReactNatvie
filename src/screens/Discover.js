@@ -30,7 +30,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 
 import { Image as ExpoImage } from 'expo-image';
-import { useAppContext } from '../context/AppContext'; // --- 新增：引入 useAppContext ---
+import { useAppContext } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
@@ -173,7 +173,13 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 };
 
 export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex, selectedBrands }) {
-  const { reFetch, setReFetch } = useAppContext(); // --- 新增：取得 reFetch 狀態 ---
+  // --- 取出定義好的清單 ---
+  const { 
+    reFetch, setReFetch, 
+    selectedCategories, selectedStyles, 
+    toggleCategory, toggleStyle,
+    FILTER_CATEGORY_OPTIONS, FILTER_STYLE_OPTIONS
+  } = useAppContext(); 
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSwipedAll, setIsSwipedAll] = useState(false);
@@ -181,24 +187,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const [isDescVisible, setIsDescVisible] = useState(false);
   
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedStyles, setSelectedStyles] = useState([]);
-
-  const toggleCategory = (category) => {
-    setSelectedCategories((prev) => 
-      prev.includes(category) 
-        ? prev.filter((item) => item !== category) 
-        : [...prev, category]
-    );
-  };
-
-  const toggleStyle = (style) => {
-    setSelectedStyles((prev) => 
-      prev.includes(style) 
-        ? prev.filter((item) => item !== style) 
-        : [...prev, style]
-    );
-  };
 
   const swiperRef = useRef(null);
   const swipeX = useSharedValue(0);
@@ -213,6 +201,12 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
       const params = new URLSearchParams();
       if (selectedBrands?.size > 0) {
         selectedBrands.forEach(brand => params.append('brands', brand));
+      }
+      if (selectedCategories.length > 0) {
+        selectedCategories.forEach(cat => params.append('categories', cat));
+      }
+      if (selectedStyles.length > 0) {
+        selectedStyles.forEach(style => params.append('styles', style));
       }
       
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
@@ -231,29 +225,17 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         brand: item.brand,
         icon: item.brand_icon
       }));
-
-      // --- 修改區域：實作保留當前卡片的邏輯 ---
       
-      // 取得畫面當前正在顯示的卡片
       const currentCard = cards[currentIndex];
 
-      // 判斷條件：如果有當前卡片，且 (未選擇任何品牌 或 該卡片品牌在選擇的品牌清單內)
       if (currentCard && (selectedBrands.size === 0 || selectedBrands.has(currentCard.brand))) {
-        
-        // 為了避免後端回傳的新資料裡面又包含了當前這張卡片導致重複，我們用 id 把重複的濾掉
         const filteredFormData = formData.filter(item => item.id !== currentCard.id);
-        
-        // 保留當前卡片在第一位，把新的資料加在後面
         setCards([currentCard, ...filteredFormData]);
-        setCurrentIndex(0); // 因為當前卡片被移到 index 0 了，所以把指標歸零
-        
+        setCurrentIndex(0); 
       } else {
-        // 如果條件不符（例如該卡片的品牌被取消勾選了），就全部替換成新資料
         setCards(formData);
         setCurrentIndex(0);
       }
-      
-      // ----------------------------------------
 
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -264,17 +246,16 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
   useFocusEffect(
     useCallback(() => {
-      // --- 新增：回到畫面時檢查是否需要重新載入 ---
       if (reFetch) {
         fetchData();
-        setReFetch(false); // 執行完後重置開關
+        setReFetch(false); 
       }
 
       return () => {
         setIsDescVisible(false);
         setIsFilterExpanded(false);
       };
-    }, [reFetch, selectedBrands]) // 加上依賴陣列
+    }, [reFetch, selectedBrands, selectedCategories, selectedStyles])
   );
 
   const uiAnimatedStyle = useAnimatedStyle(() => ({
@@ -475,7 +456,8 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                   {isFilterExpanded && (
                     <View style={styles.filterDropdown}>
                       <Text style={styles.dropdownSectionTitle}>分類</Text>
-                      {['上身', '下身', '外套', '連身'].map((item) => {
+                      {/* --- 改用來自 Context 的常數陣列 --- */}
+                      {FILTER_CATEGORY_OPTIONS.map((item) => {
                         const isChecked = selectedCategories.includes(item);
                         return (
                           <TouchableOpacity 
@@ -496,7 +478,8 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                       <View style={styles.dropdownDivider} />
 
                       <Text style={styles.dropdownSectionTitle}>風格</Text>
-                      {['日系', '韓系', '美式', '簡約'].map((item) => {
+                      {/* --- 改用來自 Context 的常數陣列 --- */}
+                      {FILTER_STYLE_OPTIONS.map((item) => {
                         const isChecked = selectedStyles.includes(item);
                         return (
                           <TouchableOpacity 

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { Image as ExpoImage } from 'expo-image';
+import { useAppContext } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
@@ -20,33 +21,21 @@ const CARD_WIDTH = (width - (PADDING_HORIZONTAL * 2) - COLUMN_GAP) / 2;
 const RATIO_RADIUS = 0.12;
 
 export default function CategoryScreen({ categories, selectedBrands, onToggleBrand }) {
+  // --- 取出定義好的清單 ---
+  const { 
+    selectedCategories, selectedStyles, 
+    toggleCategory, toggleStyle,
+    FILTER_CATEGORY_OPTIONS, FILTER_STYLE_OPTIONS 
+  } = useAppContext();
+
   const [activeCategory, setActiveCategory] = useState(null);
-  
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedStyles, setSelectedStyles] = useState([]);
 
   useEffect(() => {
     if (categories && Object.keys(categories).length > 0 && !activeCategory) {
       setActiveCategory('Female');
     }
   }, [categories]);
-
-  const toggleCategory = (category) => {
-    setSelectedCategories((prev) => 
-      prev.includes(category) 
-        ? prev.filter((item) => item !== category) 
-        : [...prev, category]
-    );
-  };
-
-  const toggleStyle = (style) => {
-    setSelectedStyles((prev) => 
-      prev.includes(style) 
-        ? prev.filter((item) => item !== style) 
-        : [...prev, style]
-    );
-  };
 
   if (!categories || Object.keys(categories).length === 0 || !activeCategory) {
     return (
@@ -98,7 +87,8 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
             {isFilterExpanded && (
               <View style={styles.filterDropdown}>
                 <Text style={styles.dropdownSectionTitle}>分類</Text>
-                {['上身', '下身', '外套', '連身'].map((item) => {
+                {/* --- 改用來自 Context 的常數陣列 --- */}
+                {FILTER_CATEGORY_OPTIONS.map((item) => {
                   const isChecked = selectedCategories.includes(item);
                   return (
                     <TouchableOpacity 
@@ -119,7 +109,8 @@ export default function CategoryScreen({ categories, selectedBrands, onToggleBra
                 <View style={styles.dropdownDivider} />
 
                 <Text style={styles.dropdownSectionTitle}>風格</Text>
-                {['日系', '韓系', '美式', '簡約'].map((item) => {
+                {/* --- 改用來自 Context 的常數陣列 --- */}
+                {FILTER_STYLE_OPTIONS.map((item) => {
                   const isChecked = selectedStyles.includes(item);
                   return (
                     <TouchableOpacity 
