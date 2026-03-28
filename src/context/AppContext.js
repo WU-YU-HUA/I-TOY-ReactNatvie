@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Alert } from 'react-native'; // --- 新增：引入 Alert ---
 
 const AppContext = createContext();
 
@@ -22,7 +23,6 @@ export function AppProvider({ children }) {
   const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
   const [categories, setCategories] = useState([]);
 
-  // --- 新增：reFetch 狀態 ---
   const [reFetch, setReFetch] = useState(false);
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
@@ -41,7 +41,6 @@ export function AppProvider({ children }) {
         setIsBrandsLoaded(true);
       }
     };
-
     loadSelectedBrands();
   }, []);
 
@@ -82,14 +81,10 @@ export function AppProvider({ children }) {
         console.error('讀取收藏清單失敗:', error);
       }
     };
-
     loadSavedItems();
   }, []);
 
-  // 請求通知權限
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+  // --- 刪除原本在這裡的 useEffect (requestNotificationPermission) ---
 
   const [currentOpenList, setCurrentOpenList] = useState('cards');
 
@@ -108,7 +103,6 @@ export function AppProvider({ children }) {
       return newSet;
     });
     
-    // --- 新增：變更品牌時，將 reFetch 設為 true ---
     setReFetch(true);
   };
 
@@ -163,13 +157,47 @@ export function AppProvider({ children }) {
     }
   };
 
+  // --- 改寫：加入自訂訊息與判斷是否為第一次 ---
   const requestNotificationPermission = async () => {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    try {
+      // 1. 檢查是否已經詢問過
+      const hasPrompted = await AsyncStorage.getItem('@has_prompted_notification');
+      if (hasPrompted === 'true') return; 
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      // 2. 檢查目前的系統權限狀態
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      
+      // 如果還沒授權過，就跳出我們的自訂 Alert
+      if (existingStatus !== 'granted') {
+        Alert.alert(
+          "開啟通知接收最新資訊", // 自訂標題
+          "為了讓您不錯過收藏項目的最新狀態與優惠，請允許我們發送通知給您！", // 自訂內容
+          [
+            {
+              text: "晚點再說",
+              style: "cancel",
+              onPress: () => {
+                // 使用者拒絕，紀錄起來，下次就不會再跳了
+                AsyncStorage.setItem('@has_prompted_notification', 'true');
+              }
+            },
+            {
+              text: "好，開啟通知",
+              onPress: async () => {
+                // 使用者同意，這時才呼叫系統的原生權限視窗
+                await Notifications.requestPermissionsAsync();
+                // 紀錄已經詢問過
+                await AsyncStorage.setItem('@has_prompted_notification', 'true');
+              }
+            }
+          ]
+        );
+      } else {
+        // 如果原本系統就已經允許了，也要紀錄一下避免重複跑邏輯
+        await AsyncStorage.setItem('@has_prompted_notification', 'true');
+      }
+    } catch (error) {
+      console.error("通知權限請求失敗:", error);
     }
   };
 
@@ -199,8 +227,9 @@ export function AppProvider({ children }) {
         handlePrevItem,
         currentList,
         openItemIndex,
-        reFetch,     // --- 新增：將 reFetch 拋出 ---
-        setReFetch,  // --- 新增：將 setReFetch 拋出 ---
+        reFetch,
+        setReFetch,
+        requestNotificationPermission // --- 新增：拋出這個 function 給 Saved.js 用 ---
       }}
     >
       {children}

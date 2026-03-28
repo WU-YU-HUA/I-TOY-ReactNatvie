@@ -62,7 +62,7 @@ const SavedItemCard = ({ item, index, onOpenItem, isSelectMode, isSelected, onTo
 };
 
 export default function SavedScreen() {
-  const { savedItems, handleSave, handleRemoveSaved } = useAppContext();
+  const { savedItems, handleSave, handleRemoveSaved, requestNotificationPermission } = useAppContext();
 
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
@@ -78,6 +78,13 @@ export default function SavedScreen() {
   const cardRefs = useRef({});       
   const cardLayouts = useRef({});    
   const itemMap = useRef({});        
+
+  // --- 新增：進入頁面時觸發通知請求 ---
+  useFocusEffect(
+    useCallback(() => {
+      requestNotificationPermission();
+    }, [])
+  );
 
   useEffect(() => {
     isSelectModeRef.current = isSelectMode;
