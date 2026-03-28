@@ -29,7 +29,7 @@ import Reanimated, {
   withTiming
 } from 'react-native-reanimated';
 
-import { Image as ExpoImage } from 'expo-image';
+// 由於移除了 Brand Icon，如果不需用到 expo-image 可以考慮把此行拔除，但先幫你保留以防其他地方用到
 import { useAppContext } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
@@ -146,17 +146,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 
             <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             
-            {!!card.icon && (
-              <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
-                <ExpoImage 
-                  source={{ uri: card.icon }} 
-                  style={styles.brandIcon} 
-                  cachePolicy="disk"
-                  contentFit="cover"
-                  transition={200}
-                />
-              </Reanimated.View>
-            )}
+            {/* 這裡原本的 card.icon 區塊已經被移除了 */}
             
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
@@ -173,7 +163,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
 };
 
 export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex, selectedBrands }) {
-  // --- 取出定義好的清單 ---
   const { 
     reFetch, setReFetch, 
     selectedCategories, selectedStyles, 
@@ -362,6 +351,16 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     }
   };
 
+  // ✅ 新增上一頁功能 (Index - 1 最小為 0)
+  const handleGoBack = () => {
+    if (currentIndex > 0) {
+      const newIndex = Math.max(0, currentIndex - 1);
+      setCurrentIndex(newIndex);
+      // Optional: 依照套件版本，如果 UI 沒有退回前一張可以觸發 jumpToCardIndex 或 swipeBack
+      swiperRef.current?.jumpToCardIndex?.(newIndex); 
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -456,7 +455,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                   {isFilterExpanded && (
                     <View style={styles.filterDropdown}>
                       <Text style={styles.dropdownSectionTitle}>分類</Text>
-                      {/* --- 改用來自 Context 的常數陣列 --- */}
                       {FILTER_CATEGORY_OPTIONS.map((item) => {
                         const isChecked = selectedCategories.includes(item);
                         return (
@@ -478,7 +476,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                       <View style={styles.dropdownDivider} />
 
                       <Text style={styles.dropdownSectionTitle}>風格</Text>
-                      {/* --- 改用來自 Context 的常數陣列 --- */}
                       {FILTER_STYLE_OPTIONS.map((item) => {
                         const isChecked = selectedStyles.includes(item);
                         return (
@@ -519,6 +516,11 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
 
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
             <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* ✅ 新增：在畫面左側對應位置的上一頁按鈕 */}
+          <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleGoBack}>
+            <Ionicons name="refresh-outline" size={width * 0.07} color="#FFFFFF" style={{ transform: [{ scaleX: -1 }] }}/>
           </TouchableOpacity>
 
           <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
@@ -702,17 +704,7 @@ const styles = StyleSheet.create({
     resizeMode: 'flex'
   },
   
-  brandIconWrapper: {
-    position: 'absolute',
-    bottom: height * 0.26, 
-    left: width * 0.03,    
-    zIndex: 10,
-  },
-  brandIcon: {
-    width: width * 0.2,            
-    height: width * 0.2,            
-    borderRadius: width * 0.2 * 0.12,      
-  },
+  // 移除舊的 brandIconWrapper 和 brandIcon 樣式
 
   tagWrapper: {
     marginTop: 12,
@@ -768,6 +760,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(12, 12, 12, 0.9)'
+  },
+  // ✅ 新增：把上一頁按鈕固定在畫面的左邊對應高度
+  fixedBackWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + buttonSize + spacing,
+    left: width * 0.02, 
+    zIndex: 20,
+    width: buttonSize,
+    height: buttonSize,
+    borderRadius: buttonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.9)',
   },
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
