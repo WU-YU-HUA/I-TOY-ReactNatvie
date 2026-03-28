@@ -11,7 +11,7 @@ const getFirstImg = (img) => {
   return Array.isArray(img) ? img[0] : img;
 };
 
-// --- 新增：把篩選選項定義在這裡，以後只要維護這裡即可 ---
+// --- 把篩選選項定義在這裡，以後只要維護這裡即可 ---
 const FILTER_CATEGORY_OPTIONS = ["0-200", "200+"];
 const FILTER_STYLE_OPTIONS = ['最新'];
 
@@ -33,7 +33,38 @@ export function AppProvider({ children }) {
 
   const [reFetch, setReFetch] = useState(false);
 
+  // --- 新增：首次啟動狀態 (null代表讀取中，true代表首次，false代表非首次) ---
+  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
+
+  // --- 新增：讀取是否為第一次打開 APP ---
+  useEffect(() => {
+    const checkFirstLaunch = async () => {
+      try {
+        const hasLaunched = await AsyncStorage.getItem('@has_launched');
+        if (hasLaunched === null) {
+          setIsFirstLaunch(true); // 沒有紀錄，是第一次
+        } else {
+          setIsFirstLaunch(false); // 有紀錄，不是第一次
+        }
+      } catch (error) {
+        console.error('讀取首次啟動狀態失敗:', error);
+        setIsFirstLaunch(false); // 錯誤處理：避免卡在歡迎畫面
+      }
+    };
+    checkFirstLaunch();
+  }, []);
+
+  // --- 新增：完成導覽後觸發，寫入紀錄 ---
+  const completeFirstLaunch = async () => {
+    try {
+      await AsyncStorage.setItem('@has_launched', 'true');
+      setIsFirstLaunch(false);
+    } catch (error) {
+      console.error('儲存首次啟動狀態失敗:', error);
+    }
+  };
 
   // 讀取已選取的品牌
   useEffect(() => {
@@ -250,8 +281,10 @@ export function AppProvider({ children }) {
         selectedStyles,        
         toggleCategory,        
         toggleStyle,
-        FILTER_CATEGORY_OPTIONS, // --- 拋出清單，讓其他頁面抓 ---
-        FILTER_STYLE_OPTIONS     // --- 拋出清單，讓其他頁面抓 ---
+        FILTER_CATEGORY_OPTIONS, 
+        FILTER_STYLE_OPTIONS,
+        isFirstLaunch,         // --- 新增拋出 ---
+        completeFirstLaunch    // --- 新增拋出 ---
       }}
     >
       {children}

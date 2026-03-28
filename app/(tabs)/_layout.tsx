@@ -1,52 +1,29 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useSegments } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
-export default function TabLayout() {
-  const segments = useSegments();
-  const router = useRouter();
+import { AppProvider, useAppContext } from '../../src/context/AppContext';
+// 改為引入我們建立的流程控制器
+// import OnboardingFlow from '../../src/screens/OnboardingFlow';
 
-  // 用來確保已經讀取完 AsyncStorage 才開始顯示畫面與記錄新路徑
-  const [isReady, setIsReady] = useState(false);
+function TabLayoutContent() {
+  const { isFirstLaunch } = useAppContext(); 
 
-  // 1. App 開啟時，讀取最後一次所在的 Tab
-  useEffect(() => {
-    const loadLastTab = async () => {
-      try {
-        const lastTab = await AsyncStorage.getItem('@last_active_tab');
-
-        // 如果有紀錄，並且不是首頁(index)，就讓他跳轉過去
-        if (lastTab && lastTab !== 'index') {
-          router.replace(`/(tabs)/${lastTab}` as any);
-        }
-      } catch (error) {
-        console.error('讀取最後分頁失敗:', error);
-      } finally {
-        setIsReady(true);
-      }
-    };
-
-    loadLastTab();
-  }, []);
-
-  // 2. 當切換 Tab (路由改變) 時，儲存當前的 Tab 名稱
-  useEffect(() => {
-    if (!isReady) return; // 等到初始讀取完畢後才開始記錄，避免把舊紀錄洗掉
-
-    // 在 (tabs) 下，segments 會類似: ['(tabs)', 'saved'] 或 ['(tabs)', 'index']
-    const currentTab = segments[1] || 'index';
-
-    AsyncStorage.setItem('@last_active_tab', currentTab).catch((error) => {
-      console.error('儲存分頁狀態失敗:', error);
-    });
-  }, [segments, isReady]);
-
-  // 在讀取舊狀態期間，可以先回傳 null 防止畫面閃爍 (或替換成 Loading 元件)
-  if (!isReady) {
-    return null;
+  // 1. 還在從 Context 讀取狀態時，先顯示載入中
+  if (isFirstLaunch === null) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#151515', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#7AC1C9" />
+      </View>
+    );
   }
 
+  // 2. 如果是 APP 首次啟動，顯示蓋板歡迎畫面流程
+  // if (isFirstLaunch) {
+  //   return <OnboardingFlow />; 
+  // }
+
+  // 3. 正常情況：直接顯示原生 Tab 導覽列 (預設會停在 index)
   return (
     <NativeTabs
       iconColor={{
@@ -61,34 +38,18 @@ export default function TabLayout() {
       blurEffect="systemMaterialDark"
       minimizeBehavior="never"
     >
-      <NativeTabs.Trigger
-        name="index"
-        options={{
-          title: '探索',
-          icon: { sf: 'magnifyingglass' }
-        }}
-      />
-      <NativeTabs.Trigger
-        name="saved"
-        options={{
-          title: '收藏',
-          icon: { sf: 'heart' }
-        }}
-      />
-      <NativeTabs.Trigger
-        name="category"
-        options={{
-          title: '分類',
-          icon: { sf: 'square.grid.2x2' }
-        }}
-      />
-      <NativeTabs.Trigger
-        name="fixed"
-        options={{
-          title: '開發中',
-          icon: { sf: 'wrench.fill' }
-        }}
-      />
+      <NativeTabs.Trigger name="index" options={{ title: '探索', icon: { sf: 'magnifyingglass' } }} />
+      <NativeTabs.Trigger name="saved" options={{ title: '收藏', icon: { sf: 'heart' } }} />
+      <NativeTabs.Trigger name="category" options={{ title: '分類', icon: { sf: 'square.grid.2x2' } }} />
+      <NativeTabs.Trigger name="fixed" options={{ title: '開發中', icon: { sf: 'wrench.fill' } }} />
     </NativeTabs>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <AppProvider>
+      <TabLayoutContent />
+    </AppProvider>
   );
 }

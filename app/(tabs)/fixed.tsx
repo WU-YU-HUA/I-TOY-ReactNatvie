@@ -1,12 +1,28 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+// 引入流程控制器，確認相對路徑是否正確
+import OnboardingFlow from '../../src/screens/OnboardFlow';
 
-export default function FixedScreen() {
+export default function FixedTab() {
+  // 紀錄這次進來這個分頁，是否已經看過歡迎畫面了
+  const [hasSeenIntro, setHasSeenIntro] = useState(false);
+
+  // 如果還沒看過，就把流程控制器渲染出來
+  if (1) {
+    return (
+      <OnboardingFlow 
+        onFinish={() => {
+          // 當使用者跑完 First -> Second 流程後，會觸發這裡，把狀態改成 true
+          setHasSeenIntro(true);
+        }} 
+      />
+    );
+  }
+
+  // 看過之後，就會顯示這個分頁真正的內容
   return (
     <View style={styles.container}>
-      <Ionicons name="construct" size={64} color="white" />
-      <Text style={styles.text}>敬請期待</Text>
+      <Text style={styles.text}>這裡放置你未來的開發中功能</Text>
     </View>
   );
 }
@@ -14,18 +30,13 @@ export default function FixedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgb(12, 12, 12)',
+    backgroundColor: '#151515',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  icon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   text: {
-    marginTop: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 24,
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

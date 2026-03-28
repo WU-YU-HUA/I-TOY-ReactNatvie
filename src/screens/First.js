@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import React, { useState } from 'react';
-// first.js
+import { useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -9,80 +9,94 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from 'react-native';
-import { useAppContext } from './AppContext'; // 請確保路徑正確
 
-export default function FirstScreen({ onFinish }) { 
-  const { completeFirstLaunch } = useAppContext();
-  const [name, setName] = useState('Yu Hua Wu');
-
-  const handleFinish = () => {
-    // 如果有傳入 onFinish，優先執行傳入的函數（代表它是作為分頁蓋板）
-    if (onFinish) {
-      onFinish();
-    } else {
-      // 否則執行原本的首次啟動邏輯
-      completeFirstLaunch();
-    }
-  };
+// 注意：我們把 useAppContext 拿掉了，因為判斷邏輯交給外層的 OnboardingFlow 處理
+export default function FirstScreen({ onNext, onSkip }) {
+  const [name, setName] = useState('');
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.innerContainer}
-      >
-        {/* 頂部進度條 */}
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarFill} />
-        </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.innerContainer}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          {/* 頂部區域 */}
+          <View>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarFill} />
+            </View>
 
-        {/* 標題區塊 */}
-        <View style={styles.headerContainer}>
-          <Text style={styles.title}>歡迎!</Text>
-          <Text style={styles.subtitle}>發現衣櫃裡的下一件寶貝</Text>
-        </View>
-
-        {/* 圖片區塊 */}
-        <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1618331835717-801e976710b2?q=80&w=1000&auto=format&fit=crop' }} // 請換成你的鋼彈/機甲圖片路徑
-          style={styles.mainImage}
-          contentFit="cover"
-        />
-
-        {/* 名字輸入區塊 */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.askText}>來者何人?!</Text>
-          <TextInput
-            style={styles.textInput}
-            value={name}
-            onChangeText={setName}
-            placeholder="請輸入你的名字"
-            placeholderTextColor="#666"
-            textAlign="center"
-          />
-        </View>
-
-        {/* 底部按鈕區塊 */}
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity onPress={handleFinish} style={styles.skipButton}>
-            <Text style={styles.skipText}>跳過</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleFinish} style={styles.nextButton}>
-            <Text style={styles.nextButtonText}>下一步</Text>
-          </TouchableOpacity>
-
-          {/* 底部小圓點 */}
-          <View style={styles.dotsContainer}>
-            <View style={[styles.dot, styles.activeDot]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
+            <View style={styles.headerContainer}>
+              <Text style={styles.title}>歡迎!</Text>
+              <Text style={styles.subtitle}>發現衣櫃裡的下一件寶貝</Text>
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+
+          {/* 中間區域 */}
+          <View style={styles.centerContent}>
+            <Image
+              source={require('../../assets/images/amazon.jpg')} 
+              style={styles.mainImage}
+              contentFit="cover"
+            />
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.askText}>來者何人?!</Text>
+              <TextInput
+                style={styles.textInput}
+                value={name}
+                onChangeText={setName}
+                placeholder="請輸入你的名字"
+                placeholderTextColor="#666"
+                textAlign="center"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  Keyboard.dismiss();
+                  if (onNext) onNext();
+                }}
+              />
+            </View>
+          </View>
+
+          {/* 底部按鈕區塊 */}
+          <View style={styles.bottomContainer}>
+            <TouchableOpacity 
+              onPress={() => {
+                Keyboard.dismiss();
+                if (onSkip) onSkip();
+              }} 
+              style={styles.skipButton}
+            >
+              <Text style={styles.skipText}>跳過</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => {
+                Keyboard.dismiss();
+                if (onNext) onNext();
+              }} 
+              style={styles.nextButton}
+            >
+              <Text style={styles.nextButtonText}>下一步</Text>
+            </TouchableOpacity>
+
+            {/* 底部小圓點 */}
+            <View style={styles.dotsContainer}>
+              <View style={[styles.dot, styles.activeDot]} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -90,12 +104,13 @@ export default function FirstScreen({ onFinish }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#151515', // 深色背景
+    backgroundColor: '#151515', 
   },
   innerContainer: {
     flex: 1,
     paddingHorizontal: 30,
-    justifyContent: 'space-between',
+    justifyContent: 'space-between', 
+    paddingBottom: 20, 
   },
   progressBarContainer: {
     height: 4,
@@ -106,7 +121,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   progressBarFill: {
-    width: '25%', // 代表第一步
+    width: '25%', 
     height: '100%',
     backgroundColor: '#7AC1C9',
     borderRadius: 2,
@@ -114,6 +129,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignItems: 'center',
     marginTop: 30,
+    marginBottom: 20, 
   },
   title: {
     fontSize: 28,
@@ -125,21 +141,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#AAAAAA',
   },
+  centerContent: {
+    alignItems: 'center',
+    flex: 1, 
+    justifyContent: 'center', 
+  },
   mainImage: {
     width: '100%',
-    aspectRatio: 4 / 3, // 調整為接近你截圖的比例
+    aspectRatio: 4 / 3, 
     borderRadius: 20,
-    marginTop: 20,
+    marginBottom: 30, 
   },
   inputContainer: {
     alignItems: 'center',
-    marginTop: 30,
+    width: '100%',
   },
   askText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: 15, 
   },
   textInput: {
     color: '#FFFFFF',
@@ -148,17 +169,20 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333333',
     width: '80%',
     paddingVertical: 10,
+    marginBottom: 20, 
   },
   bottomContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 'auto', 
   },
   skipButton: {
     marginBottom: 15,
+    padding: 10, 
   },
   skipText: {
     color: '#FFFFFF',
     fontSize: 14,
+    textDecorationLine: 'underline', 
   },
   nextButton: {
     backgroundColor: '#7AC1C9',
@@ -167,6 +191,11 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     marginBottom: 20,
+    shadowColor: '#7AC1C9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5, 
   },
   nextButtonText: {
     color: '#FFFFFF',
@@ -176,6 +205,7 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 10,
   },
   dot: {
     width: 6,
