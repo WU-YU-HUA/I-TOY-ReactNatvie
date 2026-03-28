@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Reanimated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Reanimated, { interpolate, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { Image as ExpoImage } from 'expo-image';
 import DescriptionPanel from './Description';
@@ -17,59 +17,109 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   const images = Array.isArray(card.img) ? card.img : [card.img];
   const [imgIndex, setImgIndex] = useState(0);
 
-  // --- 優化：移除 useEffect，改在 render 階段直接更新，解決卡片切換時閃一幀的舊圖問題 ---
   const [prevCardUri, setPrevCardUri] = useState(images[0]);
   if (images[0] !== prevCardUri) {
     setImgIndex(0);
     setPrevCardUri(images[0]);
   }
-  // -----------------------------------------------------------------------------------
 
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
+
+  const savedScale = useSharedValue(1);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const [isLocalZooming, setIsLocalZooming] = useState(false);
 
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
 
   const handleNextImage = () => setImgIndex((prev) => (prev + 1) % images.length);
   const handlePrevImage = () => setImgIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  useAnimatedReaction(
+    () => scale.value,
+    (currentScale, previousScale) => {
+      const prev = previousScale ?? 1;
+      if (currentScale > 1.05 && prev <= 1.05) {
+        if (isZoomingAnim) isZoomingAnim.value = withTiming(1, { duration: 150 });
+        if (setIsZooming) runOnJS(setIsZooming)(true);
+        runOnJS(setIsLocalZooming)(true); 
+      } 
+      else if (currentScale <= 1.05 && prev > 1.05) {
+        if (isZoomingAnim) isZoomingAnim.value = withTiming(0, { duration: 150 });
+        if (setIsZooming) runOnJS(setIsZooming)(false);
+        runOnJS(setIsLocalZooming)(false); 
+      }
+    }
+  );
+
   const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
-      if (isZoomingAnim) isZoomingAnim.value = withTiming(1, { duration: 150 });
-      if (setIsZooming) runOnJS(setIsZooming)(true);
+    .onUpdate((event) => { 
+      scale.value = Math.max(1, Math.min(savedScale.value * event.scale, 3.5)); 
     })
-    .onUpdate((event) => { scale.value = Math.max(1, Math.min(event.scale, 3.5)); })
     .onEnd(() => {
-      scale.value = withSpring(1, springConfig);
-      translateX.value = withSpring(0, springConfig);
-      translateY.value = withSpring(0, springConfig);
-      if (isZoomingAnim) isZoomingAnim.value = withTiming(0, { duration: 150 });
-      if (setIsZooming) runOnJS(setIsZooming)(false);
+      savedScale.value = scale.value;
+
+      if (scale.value <= 1.05) {
+        scale.value = withSpring(1, springConfig);
+        translateX.value = withSpring(0, springConfig);
+        translateY.value = withSpring(0, springConfig);
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
     });
 
   const panGesture = Gesture.Pan()
-    .minPointers(2)
+    .minPointers(1) 
+    .enabled(isLocalZooming) 
     .onUpdate((event) => {
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + event.translationX;
+        translateY.value = savedTranslateY.value + event.translationY;
+      }
     })
     .onEnd(() => {
-      translateX.value = withSpring(0, springConfig);
-      translateY.value = withSpring(0, springConfig);
+      if (scale.value > 1) {
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
+      }
     });
 
-  const tapGesture = Gesture.Tap().onEnd((event) => {
-    if (scale.value > 1.1) return; 
+  // --- 修正：移除 maxPointers(1)，改用 maxDistance 限制來防止縮放誤觸 ---
+  const singleTapGesture = Gesture.Tap()
+    .numberOfTaps(1)
+    .maxDuration(250) // 限制點擊時間，太慢就不算點擊
+    .maxDistance(15)  // 手指點下去如果移動超過 15 像素，就判定為滑動/縮放，取消點擊
+    .onEnd((event) => {
+      if (scale.value > 1.1) return; 
 
-    if (event.x < width / 2) {
-      runOnJS(handlePrevImage)();
-    } else {
-      runOnJS(handleNextImage)();
-    }
-  });
+      if (event.x < width / 2) {
+        runOnJS(handlePrevImage)();
+      } else {
+        runOnJS(handleNextImage)();
+      }
+    });
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDuration(250)
+    .maxDistance(30) // 雙擊的容許位移稍微給大一點，但一樣能過濾掉雙指縮放
+    .onEnd(() => {
+      if (scale.value > 1) {
+        scale.value = withSpring(1, springConfig);
+        translateX.value = withSpring(0, springConfig);
+        translateY.value = withSpring(0, springConfig);
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    });
+
+  const tapGestures = Gesture.Exclusive(doubleTapGesture, singleTapGesture);
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture, tapGestures);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
@@ -109,7 +159,6 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
             {!!card.icon && (
               <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
-                {/* 保留你原本的 ExpoImage */}
                 <ExpoImage 
                   source={{ uri: card.icon }} 
                   style={styles.brandIcon} 
@@ -166,19 +215,16 @@ export default function OpenSaved({
   const handleToggleHeart = () => {
     if (isSavedStatus) {
       if (nextItemData) {
-        // 1. 有下一張：向左滑動動畫
         swipeTranslateX.value = withTiming(-(width + GAP), { duration: 250 }, () => {
-          swipeTranslateX.value = 0; // 重置 X 軸，讓畫面為下一張作好準備
+          swipeTranslateX.value = 0; 
           runOnJS(onRemoveSaved)(itemData); 
         });
       } else if (prevItemData) {
-        // 2. 只有上一張：向右滑動動畫
         swipeTranslateX.value = withTiming(width + GAP, { duration: 250 }, () => {
           swipeTranslateX.value = 0;
           runOnJS(onRemoveSaved)(itemData);
         });
       } else {
-        // 3. 全空了：直接關閉
         runOnJS(handleClose)();
         runOnJS(onRemoveSaved)(itemData);
       }
@@ -201,6 +247,7 @@ export default function OpenSaved({
   };
 
   const swipeDownGesture = Gesture.Pan()
+    .enabled(!isZooming) 
     .maxPointers(1)
     .activeOffsetY([-10, 10])
     .failOffsetX([-20, 20])
@@ -218,6 +265,7 @@ export default function OpenSaved({
     });
 
   const swipeHorizontalGesture = Gesture.Pan()
+    .enabled(!isZooming) 
     .maxPointers(1)
     .activeOffsetX([-15, 15])
     .failOffsetY([-20, 20])
@@ -336,7 +384,10 @@ export default function OpenSaved({
             </View>
           </Reanimated.View>
 
-          <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle]} pointerEvents="box-none">
+          <Reanimated.View 
+            style={[StyleSheet.absoluteFill, uiAnimatedStyle]} 
+            pointerEvents={isZooming ? 'none' : 'box-none'}
+          >
 
             <View style={styles.headerInteractiveContainer} pointerEvents="none">
                 <Text style={styles.savedTitle}>收藏</Text>
