@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Image, PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
 import OpenSaved from './OpenSaved';
@@ -363,7 +363,7 @@ export default function SavedScreen() {
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: 'rgb(12, 12, 12)' },
   fullWidthHeader: { position: 'absolute', top: 0, width: '100%', zIndex: 20 },
-  headerContent: { paddingTop: Platform.OS === 'ios' ? 80 : 60, paddingBottom: 20, paddingHorizontal: 25 },
+  headerContent: { paddingTop: height * 0.08, paddingBottom: 20, paddingHorizontal: 25 },
   headerTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerSelectBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16 },
   headerSelectText: { color: '#FFF', fontSize: 15, fontWeight: '600' },

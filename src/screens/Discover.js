@@ -7,7 +7,6 @@ import {
   Dimensions,
   Image,
   Linking,
-  Platform,
   Share,
   StyleSheet,
   Text,
@@ -145,8 +144,6 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
             )}
 
             <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
-            
-            {/* 這裡原本的 card.icon 區塊已經被移除了 */}
             
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
@@ -351,12 +348,10 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     }
   };
 
-  // ✅ 新增上一頁功能 (Index - 1 最小為 0)
   const handleGoBack = () => {
     if (currentIndex > 0) {
       const newIndex = Math.max(0, currentIndex - 1);
       setCurrentIndex(newIndex);
-      // Optional: 依照套件版本，如果 UI 沒有退回前一張可以觸發 jumpToCardIndex 或 swipeBack
       swiperRef.current?.jumpToCardIndex?.(newIndex); 
     }
   };
@@ -518,9 +513,8 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* ✅ 新增：在畫面左側對應位置的上一頁按鈕 */}
           <TouchableOpacity style={[styles.fixedBackWrapper, { transform: [{ scaleX: -1 }] }]} onPress={handleGoBack}>
-            <Ionicons name="refresh-outline" size={width * 0.07} color="#ffe100"/>
+              <Ionicons name="refresh-outline" size={width * 0.07} color="#ffe100"/>
           </TouchableOpacity>
 
           <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
@@ -570,7 +564,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: '100%',
     zIndex: 30, 
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingTop: height * 0.08,
     paddingHorizontal: 25,
     backgroundColor: 'rgba(18, 18, 18, 1)',
     paddingBottom: 15,
@@ -676,25 +670,25 @@ const styles = StyleSheet.create({
 
   paginationContainer: {
     position: 'absolute',
-    top: height * 0.15,
+    top: height * 0.18 + 12, // 確保在全黑區塊（paddingTop）的下面
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    justifyContent: 'center', // 讓所有 dot 在 container 內水平置中
+    alignItems: 'center', // 讓 dot 在 container 內垂直置中
+    width: width * 0.5, // 設定 Container 總寬度（可依需求微調）
+    alignSelf: 'center', // 確保整個 container 在螢幕水平置中
     zIndex: 10,
-    gap: 6
+    gap: 6 // 設定 dot 之間的固定間距
   },
   paginationDot: {
-    height: 4,
-    borderRadius: 2,
+    width: 12, // 設定 dot 的寬度，使其呈現長方形
+    height: 4, // 設定 dot 的高度
+    borderRadius: 2, // 設定圓角，高度的一半，使其看起來更勻稱
   },
   paginationDotActive: {
-    backgroundColor: '#FFFFFF',
-    width: 16,
+    backgroundColor: 'white', // idx 位置的 dot 變成白色
   },
   paginationDotInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    width: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 
   cardImage: {
@@ -703,8 +697,6 @@ const styles = StyleSheet.create({
     maxHeight: height * 0.7,
     resizeMode: 'flex'
   },
-  
-  // 移除舊的 brandIconWrapper 和 brandIcon 樣式
 
   tagWrapper: {
     marginTop: 12,
@@ -761,7 +753,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(12, 12, 12, 0.9)'
   },
-  // ✅ 新增：把上一頁按鈕固定在畫面的左邊對應高度
   fixedBackWrapper: {
     position: 'absolute',
     bottom: height * 0.12,
