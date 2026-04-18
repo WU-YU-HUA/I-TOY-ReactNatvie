@@ -252,7 +252,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   }));
 
   const xButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.5, 1.0], 'clamp') }],
+    transform: [{ scale: interpolate(swipeX.value, [-150, 0], [1.3, 1.0], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [-150, 0],
@@ -269,7 +269,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   }));
 
   const heartButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.0, 1.5], 'clamp') }],
+    transform: [{ scale: interpolate(swipeX.value, [0, 150], [1.0, 1.3], 'clamp') }],
     backgroundColor: interpolateColor(
       swipeX.value,
       [0, 150],
@@ -511,7 +511,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
           </ReanimatedTouchableOpacity>
 
           <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
+            <Ionicons name="share-social-outline" size={width * 0.08} color="#00ff77" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
@@ -519,8 +519,8 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
           </TouchableOpacity>
 
           {/* ✅ 新增：在畫面左側對應位置的上一頁按鈕 */}
-          <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleGoBack}>
-            <Ionicons name="refresh-outline" size={width * 0.07} color="#FFFFFF" style={{ transform: [{ scaleX: -1 }] }}/>
+          <TouchableOpacity style={[styles.fixedBackWrapper, { transform: [{ scaleX: -1 }] }]} onPress={handleGoBack}>
+            <Ionicons name="refresh-outline" size={width * 0.07} color="#ffe100"/>
           </TouchableOpacity>
 
           <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
@@ -535,7 +535,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
               <Text style={styles.buyNowText}>
                 {cards[currentIndex]?.price 
                   ? `$${Number(cards[currentIndex].price).toLocaleString()}` 
-                  : '馬上購買'}
+                  : '$169.99'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -724,12 +724,12 @@ const styles = StyleSheet.create({
   },
 
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
 
   fixedHeartWrapper: {
     position: 'absolute',
     bottom: height * 0.12,
-    right: width * 0.12,
+    right: width * 0.19,
     zIndex: 20,
     width: buttonSize,
     height: buttonSize,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   },
   fixedShareWrapper: {
     position: 'absolute',
-    bottom: height * 0.18 + (buttonSize + spacing) * 2,
+    bottom: height * 0.12,
     right: width * 0.02,
     zIndex: 20,
     width: buttonSize,
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
   // ✅ 新增：把上一頁按鈕固定在畫面的左邊對應高度
   fixedBackWrapper: {
     position: 'absolute',
-    bottom: height * 0.18 + buttonSize + spacing,
+    bottom: height * 0.12,
     left: width * 0.02, 
     zIndex: 20,
     width: buttonSize,
@@ -775,8 +775,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(12, 12, 12, 0.9)',
   },
 
-  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
-  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
+  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.05, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
+  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500', letterSpacing: 0.7 },
 
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
