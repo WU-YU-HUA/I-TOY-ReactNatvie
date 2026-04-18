@@ -28,17 +28,20 @@ import Reanimated, {
   withTiming
 } from 'react-native-reanimated';
 
-// 由於移除了 Brand Icon，如果不需用到 expo-image 可以考慮把此行拔除，但先幫你保留以防其他地方用到
 import { useAppContext } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-const buttonSize = Math.round(width * 0.13);
+
+// 尺寸定義
+const buttonSize = Math.round(width * 0.13); // 一般圓形按鈕
+const trendingButtonSize = Math.round(width * 0.16); // 正方形按鈕 (Flash & Up)
 const spacing = 20;
 
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
 const AnimatedIonicons = Reanimated.createAnimatedComponent(Ionicons);
 
+// --- ZoomableCard 元件 ---
 const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -159,6 +162,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   );
 };
 
+// --- 主螢幕元件 ---
 export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, setCurrentIndex, selectedBrands }) {
   const { 
     reFetch, setReFetch, 
@@ -171,7 +175,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
   const [isSwipedAll, setIsSwipedAll] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const [isDescVisible, setIsDescVisible] = useState(false);
-  
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
   const swiperRef = useRef(null);
@@ -236,7 +239,6 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
         fetchData();
         setReFetch(false); 
       }
-
       return () => {
         setIsDescVisible(false);
         setIsFilterExpanded(false);
@@ -286,12 +288,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
     if (!id) return;
     try{
       const url = `${API_URL}/api/firebase/like/${id}/`
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     } catch(error){
       console.error("Like Error:", error);
     }
@@ -440,11 +437,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                     activeOpacity={0.7}
                   >
                     <Text style={styles.filterText}>篩選</Text>
-                    <Ionicons
-                      name="filter"
-                      size={16}
-                      color="rgba(255, 255, 255, 0.6)"
-                    />
+                    <Ionicons name="filter" size={16} color="rgba(255, 255, 255, 0.6)" />
                   </TouchableOpacity>
 
                   {isFilterExpanded && (
@@ -467,9 +460,7 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
                           </TouchableOpacity>
                         );
                       })}
-
                       <View style={styles.dropdownDivider} />
-
                       <Text style={styles.dropdownSectionTitle}>風格</Text>
                       {FILTER_STYLE_OPTIONS.map((item) => {
                         const isChecked = selectedStyles.includes(item);
@@ -509,8 +500,24 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
             <Ionicons name="share-social-outline" size={width * 0.08} color="#00ff77" />
           </TouchableOpacity>
 
+          {/* Flash Button (左側正方形) */}
+          <TouchableOpacity style={styles.fixedTrendingWrapper} onPress={() => console.log('Trending pressed!')}>
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons name="flash" size={width * 0.07} color="#ff00ff" />
+              <Text style={styles.trendingText}>Hot</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Chevron-up Button (右側正方形 - 已同步修改) */}
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
-            <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons 
+                name={isDescVisible ? 'chevron-down' : 'chevron-up'} 
+                size={width * 0.08} 
+                color="#FFFFFF" 
+              />
+              <Text style={styles.trendingText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.fixedBackWrapper, { transform: [{ scaleX: -1 }] }]} onPress={handleGoBack}>
@@ -670,22 +677,22 @@ const styles = StyleSheet.create({
 
   paginationContainer: {
     position: 'absolute',
-    top: height * 0.18 + 12, // 確保在全黑區塊（paddingTop）的下面
+    top: height * 0.18 + 12, 
     flexDirection: 'row',
-    justifyContent: 'center', // 讓所有 dot 在 container 內水平置中
-    alignItems: 'center', // 讓 dot 在 container 內垂直置中
-    width: width * 0.5, // 設定 Container 總寬度（可依需求微調）
-    alignSelf: 'center', // 確保整個 container 在螢幕水平置中
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    width: width * 0.5, 
+    alignSelf: 'center', 
     zIndex: 10,
-    gap: 6 // 設定 dot 之間的固定間距
+    gap: 6 
   },
   paginationDot: {
-    width: 12, // 設定 dot 的寬度，使其呈現長方形
-    height: 4, // 設定 dot 的高度
-    borderRadius: 2, // 設定圓角，高度的一半，使其看起來更勻稱
+    width: 12, 
+    height: 4, 
+    borderRadius: 2, 
   },
   paginationDotActive: {
-    backgroundColor: 'white', // idx 位置的 dot 變成白色
+    backgroundColor: 'white', 
   },
   paginationDotInactive: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -695,7 +702,7 @@ const styles = StyleSheet.create({
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
-    resizeMode: 'flex'
+    resizeMode: 'cover'
   },
 
   tagWrapper: {
@@ -741,18 +748,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(12, 12, 12, 0.9)'
   },
+  
+  // 修改後的 Chevron-up 正方形按鈕樣式
   fixedUpWrapper: {
     position: 'absolute',
     bottom: height * 0.18 + buttonSize + spacing,
     right: width * 0.02,
     zIndex: 20,
-    width: buttonSize,
-    height: buttonSize,
-    borderRadius: buttonSize / 2,
+    width: trendingButtonSize,
+    height: trendingButtonSize,
+    borderRadius: 15, // 正方形圓角
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 12, 0.9)'
+    backgroundColor: 'rgba(12, 12, 12, 0.9)',
+    paddingVertical: 5,
   },
+
+  // Flash Button 正方形按鈕樣式
+  fixedTrendingWrapper: {
+    position: 'absolute',
+    bottom: height * 0.18 + buttonSize + spacing, 
+    left: width * 0.02,                                    
+    zIndex: 20,
+    width: trendingButtonSize,                                     
+    height: trendingButtonSize,                                   
+    borderRadius: 15, 
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(12, 12, 12, 0.9)',
+    paddingVertical: 5,
+  },
+
+  trendingText: {
+    color: '#FFFFFF',
+    fontSize: Math.max(10, width * 0.028),
+    fontWeight: 'bold',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+
   fixedBackWrapper: {
     position: 'absolute',
     bottom: height * 0.12,
