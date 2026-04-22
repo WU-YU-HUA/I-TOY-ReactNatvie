@@ -501,12 +501,10 @@ export default function DiscoverScreen({ onSave, cards, setCards, currentIndex, 
           </TouchableOpacity>
 
           {/* Flash Button (左側正方形) */}
-          <TouchableOpacity style={styles.fixedTrendingWrapper} onPress={() => console.log('Trending pressed!')}>
-            <View style={{ alignItems: 'center' }}>
-              <Ionicons name="flash" size={width * 0.07} color="#ff00ff" />
-              <Text style={styles.trendingText}>Hot</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={[styles.fixedTrendingWrapper, { alignItems: 'center' }]}>
+            <Ionicons name="flash" size={width * 0.07} color="#ff00ff" />
+            <Text style={styles.trendingText}>Hot</Text>
+          </View>
 
           {/* Chevron-up Button (右側正方形 - 已同步修改) */}
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
