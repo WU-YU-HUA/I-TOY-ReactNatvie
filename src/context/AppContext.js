@@ -12,7 +12,6 @@ const getFirstImg = (img) => {
 };
 
 // --- 把篩選選項定義在這裡，以後只要維護這裡即可 ---
-const FILTER_CATEGORY_OPTIONS = ["0-200", "200+"];
 const FILTER_STYLE_OPTIONS = ['最新'];
 
 export function AppProvider({ children }) {
@@ -23,40 +22,42 @@ export function AppProvider({ children }) {
   const [openedItem, setOpenedItem] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
 
-  const [selectedBrands, setSelectedBrands] = useState(new Set());
-  const [isBrandsLoaded, setIsBrandsLoaded] = useState(false);
+  // ==========================================
+  // Category & 篩選相關狀態
+  // ==========================================
   const [categories, setCategories] = useState([]);
-
-  // 共用的篩選狀態
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  
+  // 改為陣列！紀錄所有選中的路徑 (例如: ["Clothing/Women/Dresses", "Baby/Boys/Clothing"])
+  const [selectedCategoryPaths, setSelectedCategoryPaths] = useState([]); 
+  
   const [selectedStyles, setSelectedStyles] = useState([]);
-
   const [reFetch, setReFetch] = useState(false);
 
-  // --- 新增：首次啟動狀態 (null代表讀取中，true代表首次，false代表非首次) ---
+  // 首次啟動狀態 (null代表讀取中，true代表首次，false代表非首次)
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
+  const [currentOpenList, setCurrentOpenList] = useState('cards');
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
-  // --- 新增：讀取是否為第一次打開 APP ---
+  // --- 讀取是否為第一次打開 APP ---
   useEffect(() => {
     const checkFirstLaunch = async () => {
       try {
         const hasLaunched = await AsyncStorage.getItem('@has_launched');
         if (hasLaunched === null) {
-          setIsFirstLaunch(true); // 沒有紀錄，是第一次
+          setIsFirstLaunch(true); 
         } else {
-          setIsFirstLaunch(false); // 有紀錄，不是第一次
+          setIsFirstLaunch(false); 
         }
       } catch (error) {
         console.error('讀取首次啟動狀態失敗:', error);
-        setIsFirstLaunch(false); // 錯誤處理：避免卡在歡迎畫面
+        setIsFirstLaunch(false); 
       }
     };
     checkFirstLaunch();
   }, []);
 
-  // --- 新增：完成導覽後觸發，寫入紀錄 ---
+  // --- 完成導覽後觸發，寫入紀錄 ---
   const completeFirstLaunch = async () => {
     try {
       await AsyncStorage.setItem('@has_launched', 'true');
@@ -66,24 +67,7 @@ export function AppProvider({ children }) {
     }
   };
 
-  // 讀取已選取的品牌
-  useEffect(() => {
-    const loadSelectedBrands = async () => {
-      try {
-        const storedBrands = await AsyncStorage.getItem('@selected_brands');
-        if (storedBrands !== null) {
-          setSelectedBrands(new Set(JSON.parse(storedBrands)));
-        }
-      } catch (error) {
-        console.error('讀取品牌設定失敗:', error);
-      } finally {
-        setIsBrandsLoaded(true);
-      }
-    };
-    loadSelectedBrands();
-  }, []);
-
-  // 去後端讀取所有品牌
+  // --- 去後端讀取所有 Category 樹狀結構 ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -108,7 +92,7 @@ export function AppProvider({ children }) {
     fetchCategories();
   }, [API_URL]);
 
-  // 讀取最愛清單
+  // --- 讀取最愛清單 ---
   useEffect(() => {
     const loadSavedItems = async () => {
       try {
@@ -123,32 +107,15 @@ export function AppProvider({ children }) {
     loadSavedItems();
   }, []);
 
-  const [currentOpenList, setCurrentOpenList] = useState('cards');
-
-  const toggleBrand = (brandName) => {
-    setSelectedBrands((prevSet) => {
-      const newSet = new Set(prevSet);
-      if (newSet.has(brandName)) {
-        newSet.delete(brandName);
+  // --- 切換分類路徑的函數 (支援複選) ---
+  const toggleCategoryPath = (path) => {
+    setSelectedCategoryPaths((prev) => {
+      if (prev.includes(path)) {
+        return prev.filter((p) => p !== path); // 已選過則移除
       } else {
-        newSet.add(brandName);
+        return [...prev, path]; // 沒選過則加入
       }
-
-      AsyncStorage.setItem('@selected_brands', JSON.stringify(Array.from(newSet)))
-        .catch(error => console.error('儲存品牌設定失敗:', error));
-
-      return newSet;
     });
-    
-    setReFetch(true);
-  };
-
-  const toggleCategory = (category) => {
-    setSelectedCategories((prev) => 
-      prev.includes(category) 
-        ? prev.filter((item) => item !== category) 
-        : [...prev, category]
-    );
     setReFetch(true);
   };
 
@@ -261,11 +228,14 @@ export function AppProvider({ children }) {
         setOpenedItem,
         originLayout,
         setOriginLayout,
-        selectedBrands,
-        setSelectedBrands,
-        isBrandsLoaded,
+        
         categories,
-        toggleBrand,
+        selectedCategoryPaths, // 拋出已選路徑陣列
+        toggleCategoryPath,    // 拋出切換函數
+        selectedStyles,        
+        toggleStyle,
+        FILTER_STYLE_OPTIONS,
+        
         handleSave,
         handleRemoveSaved,
         handleOpenItem,
@@ -277,14 +247,8 @@ export function AppProvider({ children }) {
         reFetch,
         setReFetch,
         requestNotificationPermission,
-        selectedCategories,    
-        selectedStyles,        
-        toggleCategory,        
-        toggleStyle,
-        FILTER_CATEGORY_OPTIONS, 
-        FILTER_STYLE_OPTIONS,
-        isFirstLaunch,         // --- 新增拋出 ---
-        completeFirstLaunch    // --- 新增拋出 ---
+        isFirstLaunch,        
+        completeFirstLaunch   
       }}
     >
       {children}
