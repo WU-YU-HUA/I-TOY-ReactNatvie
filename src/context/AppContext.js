@@ -11,8 +11,6 @@ const getFirstImg = (img) => {
   return Array.isArray(img) ? img[0] : img;
 };
 
-// --- 把篩選選項定義在這裡，以後只要維護這裡即可 ---
-const FILTER_STYLE_OPTIONS = ['最新'];
 
 export function AppProvider({ children }) {
   const [savedItems, setSavedItems] = useState([]);
@@ -30,7 +28,6 @@ export function AppProvider({ children }) {
   // 改為陣列！紀錄所有選中的路徑 (例如: ["Clothing/Women/Dresses", "Baby/Boys/Clothing"])
   const [selectedCategoryPaths, setSelectedCategoryPaths] = useState([]); 
   
-  const [selectedStyles, setSelectedStyles] = useState([]);
   const [reFetch, setReFetch] = useState(false);
 
   // 首次啟動狀態 (null代表讀取中，true代表首次，false代表非首次)
@@ -116,15 +113,6 @@ export function AppProvider({ children }) {
         return [...prev, path]; // 沒選過則加入
       }
     });
-    setReFetch(true);
-  };
-
-  const toggleStyle = (style) => {
-    setSelectedStyles((prev) => 
-      prev.includes(style) 
-        ? prev.filter((item) => item !== style) 
-        : [...prev, style]
-    );
     setReFetch(true);
   };
 
@@ -232,9 +220,6 @@ export function AppProvider({ children }) {
         categories,
         selectedCategoryPaths, // 拋出已選路徑陣列
         toggleCategoryPath,    // 拋出切換函數
-        selectedStyles,        
-        toggleStyle,
-        FILTER_STYLE_OPTIONS,
         
         handleSave,
         handleRemoveSaved,
