@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -5,9 +6,6 @@ import { Dimensions, Image, PanResponder, ScrollView, StyleSheet, Text, Touchabl
 
 import { useAppContext } from '../context/AppContext';
 import OpenSaved from './OpenSaved';
-
-import { Ionicons } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
@@ -68,8 +66,6 @@ export default function SavedScreen() {
   const [originLayout, setOriginLayout] = useState(null);
   const [previewItem, setPreviewItem] = useState(null); 
   
-  const [collapsedBrands, setCollapsedBrands] = useState({});
-
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   
@@ -79,7 +75,6 @@ export default function SavedScreen() {
   const cardLayouts = useRef({});    
   const itemMap = useRef({});        
 
-  // --- 新增：進入頁面時觸發通知請求 ---
   useFocusEffect(
     useCallback(() => {
       requestNotificationPermission();
@@ -102,36 +97,10 @@ export default function SavedScreen() {
     }, [])
   );
 
-  const brandMap = {};
+  // --- 建立平坦的 itemMap，供手勢滑動選取使用 ---
+  itemMap.current = {};
   savedItems.forEach(item => {
-    const b = item.brand || '未分類';
-    if (!brandMap[b]) {
-      brandMap[b] = { items: [], icon: item.icon };
-    }
-    brandMap[b].items.push(item);
     itemMap.current[item.img[0]] = item; 
-  });
-
-  const sections = [];
-  Object.keys(brandMap).forEach(brand => {
-    const sectionItems = brandMap[brand].items;
-    
-    const categoryCount = { '上身': 0, '下身': 0, '連身': 0, '外套': 0, '其他': 0 };
-    sectionItems.forEach(item => {
-      const cat = item.category;
-      if (['上身', '下身', '連身', '外套'].includes(cat)) {
-        categoryCount[cat]++;
-      } else {
-        categoryCount['其他']++;
-      }
-    });
-
-    const summaryText = Object.entries(categoryCount)
-      .filter(([_, count]) => count > 0)
-      .map(([cat, count]) => `${cat}: ${count}件`)
-      .join(' · ');
-    
-    sections.push({ brand, icon: brandMap[brand].icon, summaryText, items: sectionItems });
   });
 
   const panResponder = useRef(
@@ -142,7 +111,6 @@ export default function SavedScreen() {
       },
       onPanResponderGrant: (evt, gestureState) => {
         setIsScrollEnabled(false);
-        
         const startX = gestureState.x0;
         const startY = gestureState.y0;
 
@@ -151,7 +119,6 @@ export default function SavedScreen() {
           if (node) {
             node.measure((x, y, w, h, pageX, pageY) => {
               cardLayouts.current[key] = { pageX, pageY, w, h };
-              
               if (
                 startX >= pageX && startX <= pageX + w &&
                 startY >= pageY && startY <= pageY + h
@@ -203,11 +170,19 @@ export default function SavedScreen() {
   const handleLocalOpen = (item, layout, index) => { setOriginLayout(layout); setSelectedIndex(index); setPreviewItem(item); };
   const handleLocalClose = () => { setSelectedIndex(null); setOriginLayout(null); setPreviewItem(null); };
   
-  const currentBrand = previewItem?.brand || '未分類';
-  const currentBrandItems = previewItem ? (brandMap[currentBrand]?.items || []) : [];
-  const handleNext = () => { if (selectedIndex !== null && selectedIndex < currentBrandItems.length - 1) { setSelectedIndex(selectedIndex + 1); setPreviewItem(currentBrandItems[selectedIndex + 1]); } };
-  const handlePrev = () => { if (selectedIndex !== null && selectedIndex > 0) { setSelectedIndex(selectedIndex - 1); setPreviewItem(currentBrandItems[selectedIndex - 1]); } };
-  const toggleBrand = (brand) => { setCollapsedBrands(prev => ({ ...prev, [brand]: !prev[brand] })); };
+  // --- 更新：上一張 / 下一張 邏輯改成在全部陣列中平移 ---
+  const handleNext = () => { 
+    if (selectedIndex !== null && selectedIndex < savedItems.length - 1) { 
+      setSelectedIndex(selectedIndex + 1); 
+      setPreviewItem(savedItems[selectedIndex + 1]); 
+    } 
+  };
+  const handlePrev = () => { 
+    if (selectedIndex !== null && selectedIndex > 0) { 
+      setSelectedIndex(selectedIndex - 1); 
+      setPreviewItem(savedItems[selectedIndex - 1]); 
+    } 
+  };
 
   const toggleSelectItem = (item) => {
     setSelectedItems(prev => {
@@ -231,25 +206,32 @@ export default function SavedScreen() {
     setIsSelectMode(false);
   };
 
+  // --- 更新：刪除當下預覽物品後的處理邏輯 ---
   useEffect(() => {
     if (selectedIndex !== null && previewItem) {
       const stillExists = savedItems.find(item => item.img[0] === previewItem.img[0]);
       if (!stillExists) {
-        const newBrandItems = savedItems.filter(i => (i.brand || '未分類') === (previewItem.brand || '未分類'));
-        if (newBrandItems.length === 0) {
+        if (savedItems.length === 0) {
           handleLocalClose();
         } else {
-          const newIndex = Math.min(selectedIndex, newBrandItems.length - 1);
+          // 如果原本的 index 超過現在陣列的長度，就退回最後一張
+          const newIndex = Math.min(selectedIndex, savedItems.length - 1);
           setSelectedIndex(newIndex);
-          setPreviewItem(newBrandItems[newIndex]);
+          setPreviewItem(savedItems[newIndex]);
         }
       }
     }
   }, [savedItems, selectedIndex, previewItem]); 
 
   const isCurrentlySaved = previewItem ? savedItems.some(i => i.img[0] === previewItem.img[0]) : false;
-  const prevItemData = selectedIndex > 0 ? currentBrandItems[selectedIndex - 1] : null;
-  const nextItemData = selectedIndex !== null && selectedIndex < currentBrandItems.length - 1 ? currentBrandItems[selectedIndex + 1] : null;
+  
+  // --- 更新：上下張變數改成在全部收藏中找 ---
+  const prevItemData = selectedIndex > 0 ? savedItems[selectedIndex - 1] : null;
+  const nextItemData = selectedIndex !== null && selectedIndex < savedItems.length - 1 ? savedItems[selectedIndex + 1] : null;
+
+  // 計算空缺卡片數量，讓最後一排如果不足 3 個，也能靠左對齊
+  const remainder = savedItems.length % 3;
+  const dummyCount = remainder === 0 ? 0 : 3 - remainder;
 
   return (
     <View style={styles.screenContainer} {...panResponder.panHandlers}>
@@ -261,7 +243,6 @@ export default function SavedScreen() {
               <Text style={styles.savedSubtitle}>共 {savedItems.length} 個收藏</Text>
             </View>
             
-            {/* --- 更新：進入選取模式時隱藏右上角按鈕 --- */}
             {!isSelectMode && (
               <TouchableOpacity onPress={toggleSelectMode} style={styles.headerSelectBtn}>
                 <Text style={styles.headerSelectText}>選取</Text>
@@ -276,65 +257,34 @@ export default function SavedScreen() {
         contentContainerStyle={[styles.scrollContent, isSelectMode && { paddingBottom: 200 }]} 
         showsVerticalScrollIndicator={false}
       >
-        {sections.map((section, index) => {
-          const isCollapsed = collapsedBrands[section.brand];
-          
-          return (
-            <View key={section.brand} style={styles.sectionContainer}>
-              {index > 0 && <View style={styles.divider} />}
-
-              <TouchableOpacity style={styles.brandHeader} activeOpacity={0.8} onPress={() => toggleBrand(section.brand)}>
-                {!!section.icon && (
-                  <View style={styles.brandIconWrapper}>
-                    <ExpoImage source={{ uri: section.icon }} style={styles.brandHeaderIcon} cachePolicy="disk" contentFit="contain" transition={200} />
-                  </View>
-                )}
-                <View style={styles.brandHeaderRight}>
-                  <View style={styles.brandHeaderTitleRow}>
-                    <Text style={styles.brandHeaderText} numberOfLines={1}>{section.brand}</Text>
-                    <Ionicons name={isCollapsed ? "chevron-down" : "chevron-up"} color="rgba(255,255,255,0.6)" size={24} />
-                  </View>
-                  {!!section.summaryText && <Text style={styles.brandSummaryText}>{section.summaryText}</Text>}
-                </View>
-              </TouchableOpacity>
-
-              {!isCollapsed && (
-                <View style={styles.gridContainer}>
-                  {section.items.map((item, localIndex) => (
-                    <SavedItemCard
-                      key={item.img[0] + localIndex}
-                      item={item}
-                      index={localIndex} 
-                      onOpenItem={handleLocalOpen} 
-                      isSelectMode={isSelectMode}
-                      isSelected={selectedItems.some(i => i.img[0] === item.img[0])}
-                      onToggleSelect={toggleSelectItem}
-                      onSetRef={(el) => cardRefs.current[item.img[0]] = el} 
-                    />
-                  ))}
-                  {section.items.length % 3 !== 0 && (
-                    <View style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })}
+        <View style={styles.gridContainer}>
+          {savedItems.map((item, index) => (
+            <SavedItemCard
+              key={item.img[0] + index}
+              item={item}
+              index={index} 
+              onOpenItem={handleLocalOpen} 
+              isSelectMode={isSelectMode}
+              isSelected={selectedItems.some(i => i.img[0] === item.img[0])}
+              onToggleSelect={toggleSelectItem}
+              onSetRef={(el) => cardRefs.current[item.img[0]] = el} 
+            />
+          ))}
+          {/* 補足最後一排的空格，實現靠左對齊 */}
+          {Array.from({ length: dummyCount }).map((_, i) => (
+            <View key={`dummy-${i}`} style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />
+          ))}
+        </View>
       </ScrollView>
 
-      {/* --- 更新：底部控制列的排版 --- */}
       {isSelectMode && (
         <View style={styles.bottomActionBar}>
-          
-          {/* 左側：取消按鈕 */}
           <TouchableOpacity onPress={toggleSelectMode} style={styles.actionSideBtn}>
             <Text style={styles.cancelText}>取消</Text>
           </TouchableOpacity>
 
-          {/* 中間：數量顯示 */}
           <Text style={styles.selectedCountText}>已選取 {selectedItems.length} 項</Text>
           
-          {/* 右側：刪除按鈕 */}
           <TouchableOpacity 
             style={[styles.actionSideBtn, { alignItems: 'flex-end' }]} 
             disabled={selectedItems.length === 0}
@@ -342,7 +292,6 @@ export default function SavedScreen() {
           >
             <Ionicons name="trash-outline" size={24} color={selectedItems.length === 0 ? "rgba(255,255,255,0.3)" : "#FF3B30"} />
           </TouchableOpacity>
-
         </View>
       )}
 
@@ -370,15 +319,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: PADDING_HORIZONTAL, paddingTop: 160, paddingBottom: 130 },
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', marginTop: 0, marginBottom: 5 },
   savedSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
-  sectionContainer: { width: '100%' },
-  divider: { height: 1, backgroundColor: 'rgba(255, 255, 255, 0.5)', marginVertical: 20, marginHorizontal: 10 },
-  brandHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: CARD_WIDTH * RATIO_RADIUS + 6, padding: 5 },
-  brandIconWrapper: { width: CARD_WIDTH , height: CARD_WIDTH, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: 'rgba(255, 255, 255, 0.05)', overflow: 'hidden', marginRight: 15 },
-  brandHeaderIcon: { width: '100%', height: '100%' },
-  brandHeaderRight: { flex: 1, justifyContent: 'center', paddingRight: 8 },
-  brandHeaderTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  brandHeaderText: { color: '#FFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5, flex: 1 },
-  brandSummaryText: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, lineHeight: 20, fontWeight: '500' },
+  
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   savedItemContainer: { width: CARD_WIDTH, marginTop: COLUMN_GAP + 10 },
   savedItemCard: { width: CARD_WIDTH, height: CARD_WIDTH * 1.4, borderRadius: CARD_WIDTH * RATIO_RADIUS, backgroundColor: '#1C1C1E', overflow: 'hidden' },
@@ -389,16 +330,15 @@ const styles = StyleSheet.create({
   itemTagWrapperOutside: { width: '100%', height: 48, marginTop: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 8, paddingHorizontal: 6 },
   itemTagTextOutside: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 11, fontWeight: '500', textAlign: 'center', letterSpacing: 0.5, lineHeight: 18 },
   
-  // --- 更新：讓底部操作列變短、置中呈現膠囊狀 ---
   bottomActionBar: { 
     position: 'absolute', 
     bottom: height * 0.15, 
-    alignSelf: 'center',     // 讓元素在絕對定位下水平置中
-    width: width * 0.6,     // 寬度縮短為螢幕寬度的 75% (可以依喜好調整，例如 0.7 或 280)
+    alignSelf: 'center',    
+    width: width * 0.6,    
     backgroundColor: '#2C2C2E', 
     borderRadius: 100, 
     paddingVertical: 12, 
-    paddingHorizontal: 25,   // 左右內距稍微拉大一點，讓按鈕不會太貼邊緣
+    paddingHorizontal: 25,  
     zIndex: 30, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -410,7 +350,7 @@ const styles = StyleSheet.create({
     elevation: 5 
   },
   actionSideBtn: { 
-    flex: 1, // 讓左右按鈕佔據相同的空間比例，確保中間文字絕對置中
+    flex: 1, 
     justifyContent: 'center',
   },
   cancelText: { 
@@ -419,8 +359,8 @@ const styles = StyleSheet.create({
     fontWeight: '500' 
   },
   selectedCountText: { 
-    flex: 2, // 佔據中間的空間
-    textAlign: 'center', // 確保文字在自己的空間內置中
+    flex: 2, 
+    textAlign: 'center', 
     color: '#FFF', 
     fontSize: 16, 
     fontWeight: '600' 

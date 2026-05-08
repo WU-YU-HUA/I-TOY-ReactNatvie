@@ -11,7 +11,6 @@ const getFirstImg = (img) => {
   return Array.isArray(img) ? img[0] : img;
 };
 
-
 export function AppProvider({ children }) {
   const [savedItems, setSavedItems] = useState([]);
   const [cards, setCards] = useState([]);
@@ -24,13 +23,11 @@ export function AppProvider({ children }) {
   // Category & 篩選相關狀態
   // ==========================================
   const [categories, setCategories] = useState([]);
+  const [isCategoriesLoaded, setIsCategoriesLoaded] = useState(false); // 🌟 新增：用來記錄分類是否讀取完畢
   
-  // 改為陣列！紀錄所有選中的路徑 (例如: ["Clothing/Women/Dresses", "Baby/Boys/Clothing"])
   const [selectedCategoryPaths, setSelectedCategoryPaths] = useState([]); 
-  
   const [reFetch, setReFetch] = useState(false);
 
-  // 首次啟動狀態 (null代表讀取中，true代表首次，false代表非首次)
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const [currentOpenList, setCurrentOpenList] = useState('cards');
 
@@ -54,7 +51,6 @@ export function AppProvider({ children }) {
     checkFirstLaunch();
   }, []);
 
-  // --- 完成導覽後觸發，寫入紀錄 ---
   const completeFirstLaunch = async () => {
     try {
       await AsyncStorage.setItem('@has_launched', 'true');
@@ -84,15 +80,27 @@ export function AppProvider({ children }) {
         }
       } catch (error) {
         console.error('Fetch categories error:', error);
+      } finally {
+        setIsCategoriesLoaded(true); // 🌟 新增：不論成功或失敗，都把載入狀態設為 true，避免畫面永遠卡住
       }
     };
     fetchCategories();
   }, [API_URL]);
 
-  // --- 讀取最愛清單 ---
+  const CURRENT_DATA_VERSION = '2.0'; 
+
   useEffect(() => {
     const loadSavedItems = async () => {
       try {
+        const savedVersion = await AsyncStorage.getItem('@data_version');
+
+        if (savedVersion !== CURRENT_DATA_VERSION) {
+          await AsyncStorage.removeItem('@saved_items');
+          await AsyncStorage.setItem('@data_version', CURRENT_DATA_VERSION);
+          setSavedItems([]); 
+          return; 
+        }
+
         const storedItems = await AsyncStorage.getItem('@saved_items');
         if (storedItems !== null) {
           setSavedItems(JSON.parse(storedItems));
@@ -104,13 +112,12 @@ export function AppProvider({ children }) {
     loadSavedItems();
   }, []);
 
-  // --- 切換分類路徑的函數 (支援複選) ---
   const toggleCategoryPath = (path) => {
     setSelectedCategoryPaths((prev) => {
       if (prev.includes(path)) {
-        return prev.filter((p) => p !== path); // 已選過則移除
+        return prev.filter((p) => p !== path); 
       } else {
-        return [...prev, path]; // 沒選過則加入
+        return [...prev, path]; 
       }
     });
     setReFetch(true);
@@ -218,8 +225,9 @@ export function AppProvider({ children }) {
         setOriginLayout,
         
         categories,
-        selectedCategoryPaths, // 拋出已選路徑陣列
-        toggleCategoryPath,    // 拋出切換函數
+        isCategoriesLoaded,    // 🌟 新增：拋出這個變數讓 index.tsx 可以讀取
+        selectedCategoryPaths, 
+        toggleCategoryPath,    
         
         handleSave,
         handleRemoveSaved,

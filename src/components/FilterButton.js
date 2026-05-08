@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 // ==========================================
@@ -37,7 +37,7 @@ const CategoryItem = ({ item, parentPath = [], selectedPaths = [], onToggle }) =
 
   const hasChildren = item.children && item.children.length > 0;
   const currentPath = [...parentPath, item.name];
-  const fullPathString = currentPath.join('/');
+  const fullPathString = currentPath.join('>');
   
   const isSelected = selectedPaths.includes(fullPathString);
 
