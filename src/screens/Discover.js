@@ -28,6 +28,7 @@ import Reanimated, {
   withTiming
 } from 'react-native-reanimated';
 
+import CategoryFilterPicker from '../components/FilterButton';
 import { useAppContext } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
@@ -149,18 +150,18 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   );
 };
 
-// --- 主螢幕元件 (徹底修正版) ---
-// 這裡我們只接收 onSave 這個 Prop
 export default function DiscoverScreen({ onSave }) {
   
-  // 🌟 這裡最重要！從 Context 拿出所有狀態管理函數
   const { 
     cards, 
     setCards, 
     currentIndex, 
     setCurrentIndex, 
     reFetch, 
-    setReFetch 
+    setReFetch,
+    categories,
+    selectedCategoryPaths,
+    toggleCategoryPath
   } = useAppContext(); 
   
   const [isLoading, setIsLoading] = useState(false);
@@ -179,10 +180,15 @@ export default function DiscoverScreen({ onSave }) {
     setIsSwipedAll(false);
     
     try {
-      const url = `${API_URL}/api/firebase/datas/`;
+      const params = new URLSearchParams();
+      if (selectedCategoryPaths && selectedCategoryPaths.length > 0) {
+        selectedCategoryPaths.forEach(path => params.append('categories', path));
+      }
+
+      const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
+      console.log("🔗 [fetchData] 正在發送請求至:", url);
 
       const response = await fetch(url);
-
       const json = await response.json();
 
       const formData = json.map(item => ({
@@ -194,12 +200,10 @@ export default function DiscoverScreen({ onSave }) {
         description: item.description
       }));
       
-      // 現在 setCards 是從 useAppContext 拿到的，保證它是個 function
       setCards(formData);
       setCurrentIndex(0);
 
     } catch (error) {
-      // 🕵️‍♂️ 這裡會印出錯誤具體位置
       console.error("❌ [fetchData] 請求失敗，錯誤訊息:", error.message);
     } finally {
       setIsLoading(false);
@@ -215,12 +219,12 @@ export default function DiscoverScreen({ onSave }) {
       return () => {
         setIsDescVisible(false);
       };
-    }, [reFetch])
+    }, [reFetch, selectedCategoryPaths]) // 🌟 確保閉包內永遠抓到最新的篩選陣列
   );
 
   useEffect(() => {
     if ((!cards || cards.length === 0) && !isSwipedAll) {
-      fetchData();
+      fetchData(); // 🌟 因為已經被 index.tsx 擋住了，所以第一次跑到這裡時，selectedCategoryPaths 保證是正確的
     }
   }, []);
 
@@ -316,7 +320,6 @@ export default function DiscoverScreen({ onSave }) {
     );
   }
 
-  // 加上 cards 的安全判斷
   if (!cards || currentIndex >= cards.length || isSwipedAll) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
@@ -375,6 +378,12 @@ export default function DiscoverScreen({ onSave }) {
           <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
             <View style={styles.headerRow}>
               <Text style={styles.savedTitle}>探索</Text>
+              
+              <CategoryFilterPicker 
+                data={categories} 
+                selectedPaths={selectedCategoryPaths} 
+                onTogglePath={toggleCategoryPath} 
+              />
             </View>
           </View>
 
@@ -428,7 +437,6 @@ export default function DiscoverScreen({ onSave }) {
   );
 }
 
-// styles 維持原樣 (略)...
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: 'rgb(18, 18, 18)' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

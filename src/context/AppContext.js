@@ -19,11 +19,11 @@ export function AppProvider({ children }) {
   const [openedItem, setOpenedItem] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
 
-  // ==========================================
-  // Category & 篩選相關狀態
-  // ==========================================
   const [categories, setCategories] = useState([]);
-  const [isCategoriesLoaded, setIsCategoriesLoaded] = useState(false); // 🌟 新增：用來記錄分類是否讀取完畢
+  const [isCategoriesLoaded, setIsCategoriesLoaded] = useState(false); 
+  
+  // 🌟 新增：確認 AsyncStorage 本地資料是否讀取完畢
+  const [isLocalDataLoaded, setIsLocalDataLoaded] = useState(false);
   
   const [selectedCategoryPaths, setSelectedCategoryPaths] = useState([]); 
   const [reFetch, setReFetch] = useState(false);
@@ -33,7 +33,6 @@ export function AppProvider({ children }) {
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
-  // --- 讀取是否為第一次打開 APP ---
   useEffect(() => {
     const checkFirstLaunch = async () => {
       try {
@@ -60,7 +59,6 @@ export function AppProvider({ children }) {
     }
   };
 
-  // --- 去後端讀取所有 Category 樹狀結構 ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -81,7 +79,7 @@ export function AppProvider({ children }) {
       } catch (error) {
         console.error('Fetch categories error:', error);
       } finally {
-        setIsCategoriesLoaded(true); // 🌟 新增：不論成功或失敗，都把載入狀態設為 true，避免畫面永遠卡住
+        setIsCategoriesLoaded(true); 
       }
     };
     fetchCategories();
@@ -90,12 +88,13 @@ export function AppProvider({ children }) {
   const CURRENT_DATA_VERSION = '2.0'; 
 
   useEffect(() => {
-    const loadSavedItems = async () => {
+    const loadLocalData = async () => {
       try {
         const savedVersion = await AsyncStorage.getItem('@data_version');
 
         if (savedVersion !== CURRENT_DATA_VERSION) {
           await AsyncStorage.removeItem('@saved_items');
+          await AsyncStorage.removeItem('@selected_category_paths'); 
           await AsyncStorage.setItem('@data_version', CURRENT_DATA_VERSION);
           setSavedItems([]); 
           return; 
@@ -105,20 +104,34 @@ export function AppProvider({ children }) {
         if (storedItems !== null) {
           setSavedItems(JSON.parse(storedItems));
         }
+
+        const storedPaths = await AsyncStorage.getItem('@selected_category_paths');
+        if (storedPaths !== null) {
+          setSelectedCategoryPaths(JSON.parse(storedPaths));
+          // 這裡拿掉了 setReFetch(true)，因為等一下 Discover.js 第一次載入時就會自動帶上這個條件發 API 了！
+        }
       } catch (error) {
-        console.error('讀取收藏清單失敗:', error);
+        console.error('讀取本地資料失敗:', error);
+      } finally {
+        setIsLocalDataLoaded(true); // 🌟 確保讀取完畢後，發出通行證
       }
     };
-    loadSavedItems();
+    loadLocalData();
   }, []);
 
   const toggleCategoryPath = (path) => {
     setSelectedCategoryPaths((prev) => {
+      let newPaths;
       if (prev.includes(path)) {
-        return prev.filter((p) => p !== path); 
+        newPaths = prev.filter((p) => p !== path); 
       } else {
-        return [...prev, path]; 
+        newPaths = [...prev, path]; 
       }
+      
+      AsyncStorage.setItem('@selected_category_paths', JSON.stringify(newPaths))
+        .catch(error => console.error('儲存篩選條件失敗:', error));
+
+      return newPaths;
     });
     setReFetch(true);
   };
@@ -225,7 +238,8 @@ export function AppProvider({ children }) {
         setOriginLayout,
         
         categories,
-        isCategoriesLoaded,    // 🌟 新增：拋出這個變數讓 index.tsx 可以讀取
+        isCategoriesLoaded,    
+        isLocalDataLoaded, // 🌟 拋出給 index.tsx 使用
         selectedCategoryPaths, 
         toggleCategoryPath,    
         

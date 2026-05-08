@@ -1,16 +1,17 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAppContext } from '../../src/context/AppContext';
 import DiscoverScreen from '../../src/screens/Discover';
 
 export default function Index() {
   const {
-    isCategoriesLoaded, // 🌟 改為監聽 Category 是否載入完畢
+    isCategoriesLoaded, 
+    isLocalDataLoaded, // 🌟 確認本機篩選條件已讀取
     handleSave,
   } = useAppContext();
 
-  // 如果分類還沒讀完，顯示載入中
-  if (!isCategoriesLoaded) {
+  // 🌟 必須等兩個都讀完，才能放行渲染 DiscoverScreen
+  if (!isCategoriesLoaded || !isLocalDataLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: 'rgb(12, 12, 12)', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#EA80FC" />
@@ -18,11 +19,16 @@ export default function Index() {
     );
   }
 
-  // 讀完分類後，正式顯示探索畫面
-  // 參數變得超乾淨，只傳 onSave 即可！
   return (
-    <View style={{ flex: 1, backgroundColor: 'rgb(12, 12, 12)' }}>
+    <View style={styles.container}>
       <DiscoverScreen onSave={handleSave} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'rgb(12, 12, 12)',
+  },
+});

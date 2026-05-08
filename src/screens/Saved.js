@@ -68,12 +68,21 @@ export default function SavedScreen() {
   
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
-  
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
+  
+  // --- Refs ---
   const isSelectModeRef = useRef(isSelectMode);
   const cardRefs = useRef({});       
   const cardLayouts = useRef({});    
-  const itemMap = useRef({});        
+
+  // 🌟 新增：為了在 PanResponder 中取得最新的陣列狀態，使用 Ref 來儲存
+  const savedItemsRef = useRef(savedItems);
+  const selectedItemsRef = useRef(selectedItems);
+
+  // 滑動選取專用的狀態 Refs
+  const dragStartIndex = useRef(null);
+  const dragIsSelecting = useRef(true);
+  const initialSelectedIds = useRef(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -84,6 +93,15 @@ export default function SavedScreen() {
   useEffect(() => {
     isSelectModeRef.current = isSelectMode;
   }, [isSelectMode]);
+
+  // 保持 Ref 與 State 同步
+  useEffect(() => {
+    savedItemsRef.current = savedItems;
+  }, [savedItems]);
+
+  useEffect(() => {
+    selectedItemsRef.current = selectedItems;
+  }, [selectedItems]);
 
   useFocusEffect(
     useCallback(() => {
@@ -97,41 +115,40 @@ export default function SavedScreen() {
     }, [])
   );
 
-  // --- 建立平坦的 itemMap，供手勢滑動選取使用 ---
-  itemMap.current = {};
-  savedItems.forEach(item => {
-    itemMap.current[item.img[0]] = item; 
-  });
-
+  // 🌟 iPhone Photos 區間選取邏輯核心
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         if (!isSelectModeRef.current) return false;
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+        // 只要有明顯的滑動(水平或垂直)，就接管手勢
+        return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
       },
       onPanResponderGrant: (evt, gestureState) => {
         setIsScrollEnabled(false);
         const startX = gestureState.x0;
         const startY = gestureState.y0;
 
+        // 1. 記錄開始滑動「前」的選取狀態
+        initialSelectedIds.current = new Set(selectedItemsRef.current.map(i => i.img[0]));
+        dragStartIndex.current = null;
+
+        // 2. 測量所有卡片的位置
         Object.keys(cardRefs.current).forEach(key => {
           const node = cardRefs.current[key];
           if (node) {
             node.measure((x, y, w, h, pageX, pageY) => {
-              cardLayouts.current[key] = { pageX, pageY, w, h };
+              const itemIndex = savedItemsRef.current.findIndex(i => i.img[0] === key);
+              cardLayouts.current[key] = { pageX, pageY, w, h, index: itemIndex, img: key };
+
+              // 尋找手指按下的第一張照片是誰 (起點)
               if (
+                dragStartIndex.current === null &&
                 startX >= pageX && startX <= pageX + w &&
                 startY >= pageY && startY <= pageY + h
               ) {
-                const item = itemMap.current[key];
-                if (item) {
-                  setSelectedItems(prev => {
-                    if (!prev.find(i => i.img[0] === item.img[0])) {
-                      return [...prev, item];
-                    }
-                    return prev;
-                  });
-                }
+                dragStartIndex.current = itemIndex;
+                // 如果第一張本來沒選，代表這次滑動是「選取」。如果本來就選了，代表這次滑動是「取消選取」
+                dragIsSelecting.current = !initialSelectedIds.current.has(key);
               }
             });
           }
@@ -139,27 +156,50 @@ export default function SavedScreen() {
       },
       onPanResponderMove: (evt, gestureState) => {
         const { moveX, moveY } = gestureState;
-        let newSelections = [];
+        let currentIndex = null;
 
-        Object.entries(cardLayouts.current).forEach(([key, layout]) => {
+        // 找到手指目前停留在哪張照片上 (終點)
+        Object.values(cardLayouts.current).forEach(layout => {
           if (
             moveX >= layout.pageX && moveX <= layout.pageX + layout.w &&
             moveY >= layout.pageY && moveY <= layout.pageY + layout.h
           ) {
-            const item = itemMap.current[key];
-            if (item) newSelections.push(item);
+            currentIndex = layout.index;
           }
         });
 
-        if (newSelections.length > 0) {
-          setSelectedItems(prev => {
-            const prevIds = new Set(prev.map(i => i.img[0]));
-            const toAdd = newSelections.filter(i => !prevIds.has(i.img[0]));
-            if (toAdd.length > 0) {
-              return [...prev, ...toAdd];
+        if (currentIndex !== null) {
+          // 防呆：如果測量太慢沒抓到起點，現在立刻補抓
+          if (dragStartIndex.current === null) {
+            dragStartIndex.current = currentIndex;
+            const imgKey = savedItemsRef.current[currentIndex].img[0];
+            dragIsSelecting.current = !initialSelectedIds.current.has(imgKey);
+          }
+
+          // 3. 計算選取區間的最小值與最大值 (從起點到終點)
+          const minIdx = Math.min(dragStartIndex.current, currentIndex);
+          const maxIdx = Math.max(dragStartIndex.current, currentIndex);
+
+          // 4. 重建選取陣列
+          const newSelection = [];
+          savedItemsRef.current.forEach((item, idx) => {
+            const imgKey = item.img[0];
+            const isInRange = idx >= minIdx && idx <= maxIdx;
+
+            if (isInRange) {
+              // 在區間內的照片，套用這次滑動的動作 (全部選取或全部取消)
+              if (dragIsSelecting.current) {
+                newSelection.push(item);
+              }
+            } else {
+              // 不在區間內的照片，恢復到滑動「前」的原本狀態
+              if (initialSelectedIds.current.has(imgKey)) {
+                newSelection.push(item);
+              }
             }
-            return prev;
           });
+
+          setSelectedItems(newSelection);
         }
       },
       onPanResponderRelease: () => setIsScrollEnabled(true),
@@ -170,7 +210,6 @@ export default function SavedScreen() {
   const handleLocalOpen = (item, layout, index) => { setOriginLayout(layout); setSelectedIndex(index); setPreviewItem(item); };
   const handleLocalClose = () => { setSelectedIndex(null); setOriginLayout(null); setPreviewItem(null); };
   
-  // --- 更新：上一張 / 下一張 邏輯改成在全部陣列中平移 ---
   const handleNext = () => { 
     if (selectedIndex !== null && selectedIndex < savedItems.length - 1) { 
       setSelectedIndex(selectedIndex + 1); 
@@ -206,7 +245,6 @@ export default function SavedScreen() {
     setIsSelectMode(false);
   };
 
-  // --- 更新：刪除當下預覽物品後的處理邏輯 ---
   useEffect(() => {
     if (selectedIndex !== null && previewItem) {
       const stillExists = savedItems.find(item => item.img[0] === previewItem.img[0]);
@@ -214,7 +252,6 @@ export default function SavedScreen() {
         if (savedItems.length === 0) {
           handleLocalClose();
         } else {
-          // 如果原本的 index 超過現在陣列的長度，就退回最後一張
           const newIndex = Math.min(selectedIndex, savedItems.length - 1);
           setSelectedIndex(newIndex);
           setPreviewItem(savedItems[newIndex]);
@@ -224,12 +261,9 @@ export default function SavedScreen() {
   }, [savedItems, selectedIndex, previewItem]); 
 
   const isCurrentlySaved = previewItem ? savedItems.some(i => i.img[0] === previewItem.img[0]) : false;
-  
-  // --- 更新：上下張變數改成在全部收藏中找 ---
   const prevItemData = selectedIndex > 0 ? savedItems[selectedIndex - 1] : null;
   const nextItemData = selectedIndex !== null && selectedIndex < savedItems.length - 1 ? savedItems[selectedIndex + 1] : null;
 
-  // 計算空缺卡片數量，讓最後一排如果不足 3 個，也能靠左對齊
   const remainder = savedItems.length % 3;
   const dummyCount = remainder === 0 ? 0 : 3 - remainder;
 
@@ -270,7 +304,6 @@ export default function SavedScreen() {
               onSetRef={(el) => cardRefs.current[item.img[0]] = el} 
             />
           ))}
-          {/* 補足最後一排的空格，實現靠左對齊 */}
           {Array.from({ length: dummyCount }).map((_, i) => (
             <View key={`dummy-${i}`} style={[styles.savedItemContainer, { backgroundColor: 'transparent' }]} />
           ))}
