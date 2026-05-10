@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 25,
     backgroundColor: 'rgba(18, 18, 18, 1)',
-    paddingBottom: 15,
+    paddingBottom: 41,
   },
   savedTitle: {
     fontSize: 32,

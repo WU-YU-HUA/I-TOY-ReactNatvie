@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Image, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import CategoryFilterPicker from '../components/FilterButton';
 import { useAppContext } from '../context/AppContext';
 import OpenSaved from './OpenSaved';
 
@@ -62,7 +63,16 @@ const SavedItemCard = ({ item, index, onOpenItem, isSelectMode, isSelected, onTo
 };
 
 export default function SavedScreen() {
-  const { savedItems, handleSave, handleRemoveSaved, requestNotificationPermission } = useAppContext();
+  const { 
+    savedItems, 
+    handleSave, 
+    handleRemoveSaved, 
+    requestNotificationPermission,
+    categories,              
+    selectedCategoryPaths,   
+    toggleCategoryPath,
+    setSelectedCategoryPaths // 🌟 如果你的 AppContext 有提供批次更新的 setter，可以拿出來用
+  } = useAppContext();
 
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
@@ -97,7 +107,7 @@ export default function SavedScreen() {
   useEffect(() => {
     isSelectModeRef.current = isSelectMode;
     
-    // 👇 在這裡加入 overshootClamping: true
+    // 動畫設定
     expandAnim.value = withSpring(isSelectMode ? 1 : 0, { 
       damping: 14, 
       stiffness: 150, 
@@ -132,13 +142,9 @@ export default function SavedScreen() {
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         if (!isSelectModeRef.current) return false;
         
-        // 🌟 關鍵修正：判斷手勢意圖
-        // 如果垂直移動的距離大於水平移動，代表使用者是想「上下滾動頁面」，這時不要接管手勢
         if (Math.abs(gestureState.dy) > Math.abs(gestureState.dx)) {
           return false;
         }
-        
-        // 如果是水平滑動為主，且滑動距離超過 10，才判定為「開始滑動選取」，正式接管
         return Math.abs(gestureState.dx) > 10;
       },
       onPanResponderGrant: (evt, gestureState) => {
@@ -247,20 +253,16 @@ export default function SavedScreen() {
   };
 
   const handleBatchBuy = async () => {
-    // 防呆：如果沒有選取任何商品則不執行
     if (selectedItems.length === 0) return;
 
-    // 將 selectedItems 轉換成購物車需要的格式，把 id 當作 asin，數量預設為 1
     const cartItems = selectedItems.map(item => ({
-      asin: item.id,
+      asin: item.id, 
       quantity: 1
     }));
     
-    // 你的 Amazon 分潤標籤 (可替換成實際的 tag)
-    const affiliateTag = 'oscar-20';
+    const affiliateTag = 'oscar-20'; 
     let url = `https://www.amazon.com/gp/aws/cart/add.html?AssociateTag=${affiliateTag}`;
 
-    // 迴圈加上每個商品的 ASIN 與數量參數
     cartItems.forEach((item, i) => {
       const index = i + 1;
       url += `&ASIN.${index}=${item.asin}&Quantity.${index}=${item.quantity}`;
@@ -269,11 +271,7 @@ export default function SavedScreen() {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
-        // 開啟 Amazon 網址
         await Linking.openURL(url);
-        
-        // (選用) 如果你希望點擊購買並跳轉後，畫面自動結束選取模式，可以把下面這行取消註解
-        // setIsSelectMode(false); 
       } else {
         Alert.alert('錯誤', `無法開啟此網址: ${url}`);
       }
@@ -296,6 +294,20 @@ export default function SavedScreen() {
       }
     }
   }, [savedItems, selectedIndex, previewItem]); 
+
+  // 🌟 處理篩選器按下 Save 後的邏輯
+  const handleSaveFilters = (newPaths) => {
+    if (setSelectedCategoryPaths) {
+      // 情況 A：AppContext 有提供 setSelectedCategoryPaths 直接取代整個陣列
+      setSelectedCategoryPaths(newPaths);
+    } else if (toggleCategoryPath) {
+      // 情況 B：AppContext 只有 toggleCategoryPath，我們幫它比對新舊差異並觸發
+      const toAdd = newPaths.filter(p => !selectedCategoryPaths.includes(p));
+      const toRemove = selectedCategoryPaths.filter(p => !newPaths.includes(p));
+      const pathsToToggle = [...toAdd, ...toRemove];
+      pathsToToggle.forEach(path => toggleCategoryPath(path));
+    }
+  };
 
   // --- 動畫樣式 ---
   const mainStyle = useAnimatedStyle(() => ({
@@ -335,10 +347,9 @@ export default function SavedScreen() {
         <View style={styles.headerContent}>
           <View style={styles.headerTitleRow}>
             <View>
-              <Text style={styles.savedTitle}>收藏</Text>
-              {/* 動態顯示：如果進入選取模式，改顯示已選取幾項 */}
+              <Text style={styles.savedTitle}>Saved</Text>
               <Text style={styles.savedSubtitle}>
-                {isSelectMode ? `已選取 ${selectedItems.length} 項` : `共 ${savedItems.length} 個收藏`}
+                {isSelectMode ? `Selected ${selectedItems.length} items` : `${savedItems.length} items saved`}
               </Text>
             </View>
           </View>
@@ -369,64 +380,79 @@ export default function SavedScreen() {
         </View>
       </ScrollView>
 
-      {/* --- 替換後的懸浮分裂按鈕 --- */}
-      <View style={styles.fabContainer} pointerEvents="box-none">
-        
-        {/* 點擊「...」後跳出的選項選單 */}
-        {showMenu && isSelectMode && (
-          <View style={styles.menuContainer}>
+      {/* 🌟 修改後的 Filter 按鈕 */}
+      {!previewItem && !isSelectMode && (
+        <View style={styles.staticFilterWrapper} pointerEvents="box-none">
+          <CategoryFilterPicker 
+            data={categories} 
+            selectedPaths={selectedCategoryPaths} 
+            onSave={handleSaveFilters} // 👈 綁定最新的儲存邏輯
+            customTrigger={
+              <View style={[styles.circleButton, { backgroundColor: 'rgba(51, 51, 51, 0.8)' }]}>
+                <Ionicons name="filter" size={28} color="#FFF" />
+                <Text style={styles.selectText}>Filter</Text>
+              </View>
+            }
+          />
+        </View>
+      )}
+
+      {/* --- 懸浮分裂按鈕 --- */}
+      {!previewItem && (
+        <View style={styles.fabContainer} pointerEvents="box-none">
+          
+          {/* 點擊「...」後跳出的選項選單 */}
+          {showMenu && isSelectMode && (
+            <View style={styles.menuContainer}>
+              <TouchableOpacity style={styles.menuItem} onPress={handleBatchBuy} disabled={selectedItems.length === 0}>
+                <Ionicons name="cart-outline" size={20} color={selectedItems.length === 0 ? "rgba(255,255,255,0.4)" : "#FFF"} />
+                <Text style={[styles.menuText, {color: selectedItems.length === 0 ? "rgba(255,255,255,0.4)" : "#FFF"}]}>Buy</Text>
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity 
+                style={styles.menuItem} 
+                onPress={handleBatchDelete}
+                disabled={selectedItems.length === 0}
+              >
+                <Ionicons name="trash-outline" size={20} color={selectedItems.length === 0 ? "rgba(255,59,48,0.4)" : "#FF3B30"} />
+                <Text style={[styles.menuText, { color: selectedItems.length === 0 ? "rgba(255,59,48,0.4)" : '#FF3B30' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* 分裂出去的「...」按鈕 */}
+          <Animated.View style={moreStyle}>
             <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={handleBatchBuy}
-              disabled={selectedItems.length === 0} // 加上這行來禁用點擊
+              style={[styles.circleButton, { backgroundColor: '#333' }]} 
+              onPress={() => setShowMenu(!showMenu)}
             >
-              <Ionicons name="cart-outline" size={20} color={selectedItems.length === 0 ? "rgba(255,255,255,0.4)" : "#FFF"} />
-              <Text style={[styles.menuText, {color: selectedItems.length === 0 ? "rgba(255,255,255,0.4)" : "#FFF"}]}>Buy</Text>
+              <Ionicons name="ellipsis-horizontal" size={28} color="#FFF" />
             </TouchableOpacity>
-            <View style={styles.divider} />
+          </Animated.View>
+
+          {/* 分裂出去的 取消按鈕 */}
+          <Animated.View style={cancelStyle}>
             <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={handleBatchDelete}
-              disabled={selectedItems.length === 0}
+              style={[styles.circleButton, { backgroundColor: '#FF3B30' }]} 
+              onPress={toggleSelectMode}
             >
-              <Ionicons name="trash-outline" size={20} color={selectedItems.length === 0 ? "rgba(255,59,48,0.4)" : "#FF3B30"} />
-              <Text style={[styles.menuText, { color: selectedItems.length === 0 ? "rgba(255,59,48,0.4)" : '#FF3B30' }]}>Delete</Text>
+              <Ionicons name="close" size={32} color="#FFF" />
             </TouchableOpacity>
-          </View>
-        )}
+          </Animated.View>
 
-        {/* 分裂出去的「...」按鈕 */}
-        <Animated.View style={moreStyle}>
-          <TouchableOpacity 
-            style={[styles.circleButton, { backgroundColor: '#333' }]} 
-            onPress={() => setShowMenu(!showMenu)}
-          >
-            <Ionicons name="ellipsis-horizontal" size={28} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
+          {/* 原本的 選取按鈕 */}
+          <Animated.View style={mainStyle}>
+            <TouchableOpacity 
+              style={[styles.circleButton, { backgroundColor: 'rgb(0,255,255)' }]} 
+              onPress={toggleSelectMode}
+            >
+              <Ionicons name="checkmark-done" size={28} color="#FFF" />
+              <Text style={styles.selectText}>Select</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
-        {/* 分裂出去的 取消按鈕 */}
-        <Animated.View style={cancelStyle}>
-          <TouchableOpacity 
-            style={[styles.circleButton, { backgroundColor: '#FF3B30' }]} 
-            onPress={toggleSelectMode}
-          >
-            <Ionicons name="close" size={32} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* 原本的 選取按鈕 */}
-        <Animated.View style={mainStyle}>
-          <TouchableOpacity 
-            style={[styles.circleButton, { backgroundColor: 'rgb(0,255,255)' }]} 
-            onPress={toggleSelectMode}
-          >
-            <Ionicons name="checkmark-done" size={28} color="#FFF" />
-            <Text style={styles.selectText}>Select</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-      </View>
+        </View>
+      )}
 
       {previewItem && !isSelectMode && (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
@@ -461,6 +487,14 @@ const styles = StyleSheet.create({
   itemTagWrapperOutside: { width: '100%', height: 48, marginTop: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 8, paddingHorizontal: 6 },
   itemTagTextOutside: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 11, fontWeight: '500', textAlign: 'center', letterSpacing: 0.5, lineHeight: 18 },
   
+  // --- Filter 元件位置 ---
+  staticFilterWrapper: {
+    position: 'absolute',
+    bottom: (height * 0.12) + BUTTON_SIZE + 15, 
+    right: 20,
+    zIndex: 90,
+  },
+
   // --- 新增的 FAB 與選單樣式 ---
   fabContainer: {
     position: 'absolute',
@@ -478,11 +512,15 @@ const styles = StyleSheet.create({
     borderRadius: BUTTON_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
+    
+    // 🌟 陰影設定 (iOS)
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    
+    // 🌟 陰影設定 (Android)
+    elevation: 8,
   },
   selectText: {
     color: '#FFF',

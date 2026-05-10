@@ -35,6 +35,7 @@ const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
 const buttonSize = Math.round(width * 0.13); 
+const filterButtonSize = Math.round(width * 0.15); // 🌟 Filter 與 INFO 圓形按鈕的大小
 const trendingButtonSize = Math.round(width * 0.16); 
 const spacing = 20;
 
@@ -161,8 +162,9 @@ export default function DiscoverScreen({ onSave }) {
     setReFetch,
     categories,
     selectedCategoryPaths,
-    toggleCategoryPath
-  } = useAppContext(); 
+    toggleCategoryPath,
+    setSelectedCategoryPaths // 🌟 建議在 AppContext 導出這個可以直接替換陣列的方法
+  } = useAppContext();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSwipedAll, setIsSwipedAll] = useState(false);
@@ -186,7 +188,6 @@ export default function DiscoverScreen({ onSave }) {
       }
 
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
-      console.log("🔗 [fetchData] 正在發送請求至:", url);
 
       const response = await fetch(url);
       const json = await response.json();
@@ -210,6 +211,23 @@ export default function DiscoverScreen({ onSave }) {
     }
   };
 
+  const handleSaveFilters = (newPaths) => {
+    // 1. 更新全域選中的路徑
+    if (setSelectedCategoryPaths) {
+      setSelectedCategoryPaths(newPaths);
+    } else if (toggleCategoryPath) {
+      // 兼容舊版 toggle 邏輯
+      const toAdd = newPaths.filter(p => !selectedCategoryPaths.includes(p));
+      const toRemove = selectedCategoryPaths.filter(p => !newPaths.includes(p));
+      [...toAdd, ...toRemove].forEach(path => toggleCategoryPath(path));
+    }
+
+    // 2. 觸發重新抓取資料
+    // 因為選取條件變了，我們需要重置索引並讓頁面重新 fetchData
+    setCurrentIndex(0);
+    setReFetch(true); 
+  };
+
   useFocusEffect(
     useCallback(() => {
       if (reFetch) {
@@ -219,12 +237,12 @@ export default function DiscoverScreen({ onSave }) {
       return () => {
         setIsDescVisible(false);
       };
-    }, [reFetch, selectedCategoryPaths]) // 🌟 確保閉包內永遠抓到最新的篩選陣列
+    }, [reFetch, selectedCategoryPaths]) 
   );
 
   useEffect(() => {
     if ((!cards || cards.length === 0) && !isSwipedAll) {
-      fetchData(); // 🌟 因為已經被 index.tsx 擋住了，所以第一次跑到這裡時，selectedCategoryPaths 保證是正確的
+      fetchData(); 
     }
   }, []);
 
@@ -312,7 +330,7 @@ export default function DiscoverScreen({ onSave }) {
     }
   };
 
-  if (isLoading) {
+if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#EA80FC" />
@@ -320,6 +338,7 @@ export default function DiscoverScreen({ onSave }) {
     );
   }
 
+  // 無資料或瀏覽完畢時的畫面
   if (!cards || currentIndex >= cards.length || isSwipedAll) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
@@ -329,6 +348,21 @@ export default function DiscoverScreen({ onSave }) {
           <Text style={styles.retryText}>重新載入</Text>
           <Ionicons name="refresh" size={width * 0.045} color="white" style={{ marginLeft: 5 }} />
         </TouchableOpacity>
+
+        {/* 🌟 無資料畫面也顯示 Filter 按鈕 */}
+        <View style={styles.staticFilterWrapper}>
+          <CategoryFilterPicker 
+            data={categories} 
+            selectedPaths={selectedCategoryPaths} 
+            onSave={handleSaveFilters} // 👈 改用 handleSaveFilters
+            customTrigger={
+              <View style={styles.filterCircleButton}>
+                <Ionicons name="filter" size={28} color="#FFF" />
+                <Text style={styles.filterCircleText}>Filter</Text>
+              </View>
+            }
+          />
+        </View>
       </View>
     );
   }
@@ -378,12 +412,6 @@ export default function DiscoverScreen({ onSave }) {
           <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
             <View style={styles.headerRow}>
               <Text style={styles.savedTitle}>探索</Text>
-              
-              <CategoryFilterPicker 
-                data={categories} 
-                selectedPaths={selectedCategoryPaths} 
-                onTogglePath={toggleCategoryPath} 
-              />
             </View>
           </View>
 
@@ -395,17 +423,26 @@ export default function DiscoverScreen({ onSave }) {
             <Ionicons name="share-social-outline" size={width * 0.08} color="#00ff77" />
           </TouchableOpacity>
 
-          {/* <View style={[styles.fixedTrendingWrapper, { alignItems: 'center' }]}>
-            <Ionicons name="flash" size={width * 0.07} color="#ff00ff" />
-            <Text style={styles.trendingText}>Hot</Text>
-          </View> */}
-
+          {/* INFO 按鈕 */}
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
-            <View style={{ alignItems: 'center' }}>
               <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
-              <Text style={styles.trendingText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
-            </View>
+              <Text style={styles.filterCircleText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
           </TouchableOpacity>
+
+          {/* 🌟 Filter 按鈕 */}
+          <View style={styles.staticFilterWrapper}>
+            <CategoryFilterPicker 
+              data={categories} 
+              selectedPaths={selectedCategoryPaths} 
+              onSave={handleSaveFilters} // 👈 這裡同步更新
+              customTrigger={
+                <View style={styles.filterCircleButton}>
+                  <Ionicons name="filter" size={28} color="#FFF" />
+                  <Text style={styles.filterCircleText}>Filter</Text>
+                </View>
+              }
+            />
+          </View>
 
           <TouchableOpacity style={[styles.fixedBackWrapper, { transform: [{ scaleX: -1 }] }]} onPress={handleGoBack}>
               <Ionicons name="refresh-outline" size={width * 0.07} color="#ffe100"/>
@@ -425,6 +462,7 @@ export default function DiscoverScreen({ onSave }) {
               </Text>
             </View>
           </TouchableOpacity>
+
         </Reanimated.View>
 
         <DescriptionPanel
@@ -463,10 +501,29 @@ const styles = StyleSheet.create({
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
   fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
   fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  
+  // Share 按鈕
   fixedShareWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
-  fixedUpWrapper: { position: 'absolute', bottom: height * 0.18 + buttonSize + spacing, right: width * 0.02, zIndex: 20, width: trendingButtonSize, height: trendingButtonSize, borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)', paddingVertical: 5 },
-  fixedTrendingWrapper: { position: 'absolute', bottom: height * 0.18 + buttonSize + spacing, left: width * 0.02, zIndex: 20, width: trendingButtonSize, height: trendingButtonSize, borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)', paddingVertical: 5 },
-  trendingText: { color: '#FFFFFF', fontSize: Math.max(10, width * 0.028), fontWeight: 'bold', marginTop: 2, textTransform: 'uppercase' },
+  
+  // 🌟 INFO 按鈕：回到原本的座標，保留圓形與陰影樣式
+  fixedUpWrapper: { 
+    position: 'absolute', 
+    bottom: height * 0.18 + buttonSize + spacing, // 🌟 復原到原本的 bottom 位置
+    right: width * 0.02,                          // 🌟 復原到原本的 right 位置
+    zIndex: 20, 
+    width: filterButtonSize, 
+    height: filterButtonSize, 
+    borderRadius: filterButtonSize / 2, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  
   fixedBackWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.05, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
@@ -474,4 +531,31 @@ const styles = StyleSheet.create({
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
   retryText: { color: 'white', fontWeight: '500' },
+
+  // 🌟 Filter 按鈕：放置於 INFO 按鈕的正上方
+  staticFilterWrapper: {
+    position: 'absolute',
+    bottom: (height * 0.18 + buttonSize + spacing) + filterButtonSize + 15, // 🌟 INFO 的位置再往上加
+    right: width * 0.02, // 🌟 跟 INFO 齊平
+    zIndex: 90,
+  },
+  filterCircleButton: {
+    width: filterButtonSize,
+    height: filterButtonSize,
+    borderRadius: filterButtonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  filterCircleText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: -2,
+  },
 });
