@@ -38,10 +38,10 @@ function TabLayoutContent() {
       blurEffect="systemMaterialDark"
       minimizeBehavior="never"
     >
-      <NativeTabs.Trigger name="index" options={{ title: '探索', icon: { sf: 'magnifyingglass' } }} />
-      <NativeTabs.Trigger name="saved" options={{ title: '收藏', icon: { sf: 'heart' } }} />
-      <NativeTabs.Trigger name="category" options={{ title: '分類', icon: { sf: 'square.grid.2x2' } }} />
-      <NativeTabs.Trigger name="fixed" options={{ title: '開發中', icon: { sf: 'wrench.fill' } }} />
+      <NativeTabs.Trigger name="index" options={{ title: 'Explore', icon: { sf: 'magnifyingglass' } }} />
+      <NativeTabs.Trigger name="saved" options={{ title: 'Saved', icon: { sf: 'heart' } }} />
+      {/* <NativeTabs.Trigger name="category" options={{ title: '分類', icon: { sf: 'square.grid.2x2' } }} /> */}
+      <NativeTabs.Trigger name="fixed" options={{ title: 'Profile', icon: { sf: 'person.fill' } }} />
     </NativeTabs>
   );
 }

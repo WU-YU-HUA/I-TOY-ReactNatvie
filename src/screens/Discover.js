@@ -192,8 +192,8 @@ export default function DiscoverScreen({ onSave }) {
       const json = await response.json();
 
       const formData = json.map(item => ({
-        id: item.id || item.asin,
-        url: item.shopee_url || item.affiliate_url,
+        id: item.asin,
+        url: item.affiliate_url,
         img: Array.isArray(item.img) ? item.img : [item.img], 
         tag: item.tag,
         price: item.price,
@@ -395,10 +395,10 @@ export default function DiscoverScreen({ onSave }) {
             <Ionicons name="share-social-outline" size={width * 0.08} color="#00ff77" />
           </TouchableOpacity>
 
-          <View style={[styles.fixedTrendingWrapper, { alignItems: 'center' }]}>
+          {/* <View style={[styles.fixedTrendingWrapper, { alignItems: 'center' }]}>
             <Ionicons name="flash" size={width * 0.07} color="#ff00ff" />
             <Text style={styles.trendingText}>Hot</Text>
-          </View>
+          </View> */}
 
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
             <View style={{ alignItems: 'center' }}>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
 
   headerInteractiveContainer: {
     position: 'absolute', top: 0, width: '100%', zIndex: 30, 
-    paddingTop: height * 0.08, paddingHorizontal: 25, backgroundColor: 'rgba(18, 18, 18, 1)', paddingBottom: 15,
+    paddingTop: height * 0.08, paddingHorizontal: 25, backgroundColor: 'rgba(18, 18, 18, 1)', paddingBottom: 41,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', textShadowColor: 'rgba(0, 0, 0, 0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
