@@ -85,7 +85,7 @@ export function AppProvider({ children }) {
     fetchCategories();
   }, [API_URL]);
 
-  const CURRENT_DATA_VERSION = '2.0'; 
+  const CURRENT_DATA_VERSION = '2.1'; 
 
   useEffect(() => {
     const loadLocalData = async () => {

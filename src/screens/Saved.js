@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Dimensions, Image, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -71,8 +71,17 @@ export default function SavedScreen() {
     categories,              
     selectedCategoryPaths,   
     toggleCategoryPath,
-    setSelectedCategoryPaths // 🌟 如果你的 AppContext 有提供批次更新的 setter，可以拿出來用
+    setSelectedCategoryPaths 
   } = useAppContext();
+
+  // 🌟 核心過濾邏輯：依照 selectedCategoryPaths 過濾 savedItems
+  const filteredSavedItems = useMemo(() => {
+    if (!selectedCategoryPaths || selectedCategoryPaths.length === 0) {
+      return savedItems; // 如果沒有選擇任何分類，顯示全部
+    }
+    // 假設你的 item 裡面有 category 屬性對應到 Path 字串
+    return savedItems.filter(item => selectedCategoryPaths.includes(item.category));
+  }, [savedItems, selectedCategoryPaths]);
 
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [originLayout, setOriginLayout] = useState(null);
@@ -91,7 +100,8 @@ export default function SavedScreen() {
   const cardRefs = useRef({});       
   const cardLayouts = useRef({});    
 
-  const savedItemsRef = useRef(savedItems);
+  // 🌟 注意：這裡的 Ref 要改為綁定 filteredSavedItems，這樣拖曳多選的座標與索引才會對齊目前畫面上的卡片
+  const savedItemsRef = useRef(filteredSavedItems);
   const selectedItemsRef = useRef(selectedItems);
 
   const dragStartIndex = useRef(null);
@@ -107,7 +117,6 @@ export default function SavedScreen() {
   useEffect(() => {
     isSelectModeRef.current = isSelectMode;
     
-    // 動畫設定
     expandAnim.value = withSpring(isSelectMode ? 1 : 0, { 
       damping: 14, 
       stiffness: 150, 
@@ -117,9 +126,10 @@ export default function SavedScreen() {
     if (!isSelectMode) setShowMenu(false);
   }, [isSelectMode]);
 
+  // 🌟 同步過濾後的陣列至 Ref
   useEffect(() => {
-    savedItemsRef.current = savedItems;
-  }, [savedItems]);
+    savedItemsRef.current = filteredSavedItems;
+  }, [filteredSavedItems]);
 
   useEffect(() => {
     selectedItemsRef.current = selectedItems;
@@ -159,7 +169,10 @@ export default function SavedScreen() {
           const node = cardRefs.current[key];
           if (node) {
             node.measure((x, y, w, h, pageX, pageY) => {
+              // 🌟 拖拉選取要以 filteredSavedItems 中的索引為準
               const itemIndex = savedItemsRef.current.findIndex(i => i.img[0] === key);
+              if (itemIndex === -1) return; // 避免已經被過濾掉的卡片觸發
+
               cardLayouts.current[key] = { pageX, pageY, w, h, index: itemIndex, img: key };
 
               if (
@@ -220,16 +233,17 @@ export default function SavedScreen() {
   const handleLocalOpen = (item, layout, index) => { setOriginLayout(layout); setSelectedIndex(index); setPreviewItem(item); };
   const handleLocalClose = () => { setSelectedIndex(null); setOriginLayout(null); setPreviewItem(null); };
   
+  // 🌟 上一張/下一張 要以 filteredSavedItems 為準
   const handleNext = () => { 
-    if (selectedIndex !== null && selectedIndex < savedItems.length - 1) { 
+    if (selectedIndex !== null && selectedIndex < filteredSavedItems.length - 1) { 
       setSelectedIndex(selectedIndex + 1); 
-      setPreviewItem(savedItems[selectedIndex + 1]); 
+      setPreviewItem(filteredSavedItems[selectedIndex + 1]); 
     } 
   };
   const handlePrev = () => { 
     if (selectedIndex !== null && selectedIndex > 0) { 
       setSelectedIndex(selectedIndex - 1); 
-      setPreviewItem(savedItems[selectedIndex - 1]); 
+      setPreviewItem(filteredSavedItems[selectedIndex - 1]); 
     } 
   };
 
@@ -280,28 +294,26 @@ export default function SavedScreen() {
     }
   };
 
+  // 🌟 預覽時如果列表變更（例如取消收藏或改了Filter），重新對齊資料
   useEffect(() => {
     if (selectedIndex !== null && previewItem) {
-      const stillExists = savedItems.find(item => item.img[0] === previewItem.img[0]);
+      const stillExists = filteredSavedItems.find(item => item.img[0] === previewItem.img[0]);
       if (!stillExists) {
-        if (savedItems.length === 0) {
+        if (filteredSavedItems.length === 0) {
           handleLocalClose();
         } else {
-          const newIndex = Math.min(selectedIndex, savedItems.length - 1);
+          const newIndex = Math.min(selectedIndex, filteredSavedItems.length - 1);
           setSelectedIndex(newIndex);
-          setPreviewItem(savedItems[newIndex]);
+          setPreviewItem(filteredSavedItems[newIndex]);
         }
       }
     }
-  }, [savedItems, selectedIndex, previewItem]); 
+  }, [filteredSavedItems, selectedIndex, previewItem]); 
 
-  // 🌟 處理篩選器按下 Save 後的邏輯
   const handleSaveFilters = (newPaths) => {
     if (setSelectedCategoryPaths) {
-      // 情況 A：AppContext 有提供 setSelectedCategoryPaths 直接取代整個陣列
       setSelectedCategoryPaths(newPaths);
     } else if (toggleCategoryPath) {
-      // 情況 B：AppContext 只有 toggleCategoryPath，我們幫它比對新舊差異並觸發
       const toAdd = newPaths.filter(p => !selectedCategoryPaths.includes(p));
       const toRemove = selectedCategoryPaths.filter(p => !newPaths.includes(p));
       const pathsToToggle = [...toAdd, ...toRemove];
@@ -309,7 +321,6 @@ export default function SavedScreen() {
     }
   };
 
-  // --- 動畫樣式 ---
   const mainStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(expandAnim.value, [0, 1], [1, 0.1], 'clamp') }],
     opacity: interpolate(expandAnim.value, [0, 0.5], [1, 0], 'clamp'),
@@ -334,11 +345,13 @@ export default function SavedScreen() {
     zIndex: 8,
   }));
 
+  // 🌟 isCurrentlySaved 維持與完整的 savedItems 比對，確保顯示真實的收藏狀態
   const isCurrentlySaved = previewItem ? savedItems.some(i => i.img[0] === previewItem.img[0]) : false;
-  const prevItemData = selectedIndex > 0 ? savedItems[selectedIndex - 1] : null;
-  const nextItemData = selectedIndex !== null && selectedIndex < savedItems.length - 1 ? savedItems[selectedIndex + 1] : null;
+  // 🌟 預覽視窗的上一筆/下一筆，應以 filteredSavedItems 陣列來判斷
+  const prevItemData = selectedIndex > 0 ? filteredSavedItems[selectedIndex - 1] : null;
+  const nextItemData = selectedIndex !== null && selectedIndex < filteredSavedItems.length - 1 ? filteredSavedItems[selectedIndex + 1] : null;
 
-  const remainder = savedItems.length % 3;
+  const remainder = filteredSavedItems.length % 3;
   const dummyCount = remainder === 0 ? 0 : 3 - remainder;
 
   return (
@@ -348,8 +361,9 @@ export default function SavedScreen() {
           <View style={styles.headerTitleRow}>
             <View>
               <Text style={styles.savedTitle}>Saved</Text>
+              {/* 🌟 數量統計改為過濾後的長度 */}
               <Text style={styles.savedSubtitle}>
-                {isSelectMode ? `Selected ${selectedItems.length} items` : `${savedItems.length} items saved`}
+                {isSelectMode ? `Selected ${selectedItems.length} items` : `${filteredSavedItems.length} items saved`}
               </Text>
             </View>
           </View>
@@ -362,7 +376,8 @@ export default function SavedScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.gridContainer}>
-          {savedItems.map((item, index) => (
+          {/* 🌟 使用 filteredSavedItems 進行渲染 */}
+          {filteredSavedItems.map((item, index) => (
             <SavedItemCard
               key={item.img[0] + index}
               item={item}
@@ -371,7 +386,9 @@ export default function SavedScreen() {
               isSelectMode={isSelectMode}
               isSelected={selectedItems.some(i => i.img[0] === item.img[0])}
               onToggleSelect={toggleSelectItem}
-              onSetRef={(el) => cardRefs.current[item.img[0]] = el} 
+              onSetRef={(el) => {
+                if(el) cardRefs.current[item.img[0]] = el;
+              }} 
             />
           ))}
           {Array.from({ length: dummyCount }).map((_, i) => (
@@ -380,13 +397,12 @@ export default function SavedScreen() {
         </View>
       </ScrollView>
 
-      {/* 🌟 修改後的 Filter 按鈕 */}
       {!previewItem && !isSelectMode && (
         <View style={styles.staticFilterWrapper} pointerEvents="box-none">
           <CategoryFilterPicker 
             data={categories} 
             selectedPaths={selectedCategoryPaths} 
-            onSave={handleSaveFilters} // 👈 綁定最新的儲存邏輯
+            onSave={handleSaveFilters} 
             customTrigger={
               <View style={[styles.circleButton, { backgroundColor: 'rgba(51, 51, 51, 0.8)' }]}>
                 <Ionicons name="filter" size={28} color="#FFF" />
@@ -401,7 +417,6 @@ export default function SavedScreen() {
       {!previewItem && (
         <View style={styles.fabContainer} pointerEvents="box-none">
           
-          {/* 點擊「...」後跳出的選項選單 */}
           {showMenu && isSelectMode && (
             <View style={styles.menuContainer}>
               <TouchableOpacity style={styles.menuItem} onPress={handleBatchBuy} disabled={selectedItems.length === 0}>
@@ -420,7 +435,6 @@ export default function SavedScreen() {
             </View>
           )}
 
-          {/* 分裂出去的「...」按鈕 */}
           <Animated.View style={moreStyle}>
             <TouchableOpacity 
               style={[styles.circleButton, { backgroundColor: '#333' }]} 
@@ -430,7 +444,6 @@ export default function SavedScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* 分裂出去的 取消按鈕 */}
           <Animated.View style={cancelStyle}>
             <TouchableOpacity 
               style={[styles.circleButton, { backgroundColor: '#FF3B30' }]} 
@@ -440,7 +453,6 @@ export default function SavedScreen() {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* 原本的 選取按鈕 */}
           <Animated.View style={mainStyle}>
             <TouchableOpacity 
               style={[styles.circleButton, { backgroundColor: 'rgb(0,255,255)' }]} 
@@ -487,7 +499,6 @@ const styles = StyleSheet.create({
   itemTagWrapperOutside: { width: '100%', height: 48, marginTop: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1C1C1E', borderRadius: 8, paddingHorizontal: 6 },
   itemTagTextOutside: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 11, fontWeight: '500', textAlign: 'center', letterSpacing: 0.5, lineHeight: 18 },
   
-  // --- Filter 元件位置 ---
   staticFilterWrapper: {
     position: 'absolute',
     bottom: (height * 0.12) + BUTTON_SIZE + 15, 
@@ -495,7 +506,6 @@ const styles = StyleSheet.create({
     zIndex: 90,
   },
 
-  // --- 新增的 FAB 與選單樣式 ---
   fabContainer: {
     position: 'absolute',
     bottom: height * 0.12,
@@ -512,14 +522,10 @@ const styles = StyleSheet.create({
     borderRadius: BUTTON_SIZE / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    
-    // 🌟 陰影設定 (iOS)
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 6,
-    
-    // 🌟 陰影設定 (Android)
     elevation: 8,
   },
   selectText: {

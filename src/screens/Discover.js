@@ -188,7 +188,7 @@ export default function DiscoverScreen({ onSave }) {
       }
 
       const url = `${API_URL}/api/firebase/datas/?${params.toString()}`;
-
+      
       const response = await fetch(url);
       const json = await response.json();
 
@@ -198,7 +198,8 @@ export default function DiscoverScreen({ onSave }) {
         img: Array.isArray(item.img) ? item.img : [item.img], 
         tag: item.tag,
         price: item.price,
-        description: item.description
+        description: item.description,
+        category: item.category
       }));
       
       setCards(formData);
