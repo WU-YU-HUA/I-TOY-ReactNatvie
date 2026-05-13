@@ -42,7 +42,7 @@ function TabLayoutContent() {
     >
       <NativeTabs.Trigger name="index" options={{ title: 'Explore', icon: { sf: 'magnifyingglass' } }} />
       <NativeTabs.Trigger name="saved" options={{ title: 'Saved', icon: { sf: 'heart' } }} />
-      <NativeTabs.Trigger name="fixed" options={{ title: 'Profile', icon: { sf: 'person.fill' } }} />
+      <NativeTabs.Trigger name="profile" options={{ title: 'Profile', icon: { sf: 'person.fill' } }} />
     </NativeTabs>
   );
 }
