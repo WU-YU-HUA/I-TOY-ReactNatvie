@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Alert,
+  Linking, Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function ProfileScreen() {
@@ -58,10 +60,43 @@ export default function ProfileScreen() {
 
   // 2. 切換通知開關
   const toggleNotification = async (value) => {
-    setIsNotifEnabled(value);
-    await AsyncStorage.setItem('@has_prompted_notification', value ? 'true' : 'false');
-  };
+  if (value === true) {
+    // 1. 檢查目前的系統權限狀態
+    const { status } = await Notifications.getPermissionsAsync();
 
+    if (status !== 'granted') {
+      // 2. 如果沒權限，彈窗詢問是否前往設定
+      Alert.alert(
+        "通知權限未開啟",
+        "為了接收最新資訊，請至手機設定中允許通知。",
+        [
+          {
+            text: "取消",
+            style: "cancel",
+            onPress: () => setIsNotifEnabled(false) // 把開關彈回去
+          },
+          {
+            text: "前往設定",
+            onPress: () => {
+              // 3. 關鍵動作：跳轉到系統設定頁面
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:'); 
+              } else {
+                Linking.openSettings();
+              }
+              setIsNotifEnabled(false); // 先彈回去，等使用者回來後再根據權限更新
+            }
+          }
+        ]
+      );
+      return;
+    }
+  }
+
+  // 如果原本就有權限，或者使用者是想關閉開關
+  setIsNotifEnabled(value);
+  await AsyncStorage.setItem('@has_prompted_notification', value ? 'true' : 'false');
+};
   // 3. 儲存更新 (API & Local)
   const handleSave = async () => {
     setLoading(true);
@@ -121,7 +156,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Profile Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>基本資料</Text>
+          <Text style={styles.sectionTitle}>Information</Text>
           
           {/* Name Field */}
           <View style={styles.infoRow}>
@@ -150,14 +185,14 @@ export default function ProfileScreen() {
                     style={[styles.genderTag, editData.gender === g && styles.genderTagActive]}
                   >
                     <Text style={[styles.genderTagText, editData.gender === g && styles.genderTagTextActive]}>
-                      {g === 'M' ? '男' : g === 'F' ? '女' : '保密'}
+                      {g === 'M' ? 'Male' : g === 'F' ? 'Female' : 'Secret'}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             ) : (
               <Text style={styles.value}>
-                {profile.gender === 'M' ? '男' : profile.gender === 'F' ? '女' : '保密'}
+                {profile.gender === 'M' ? 'Male' : profile.gender === 'F' ? 'Female' : 'Secret'}
               </Text>
             )}
           </View>
@@ -180,7 +215,7 @@ export default function ProfileScreen() {
           <View style={styles.notifRow}>
             <View>
               <Text style={styles.sectionTitle}>Notifications</Text>
-              <Text style={styles.subLabel}>接收收藏項目的最新狀態</Text>
+              <Text style={styles.subLabel}>Receive the latest information</Text>
             </View>
             <Switch 
               value={isNotifEnabled} 
