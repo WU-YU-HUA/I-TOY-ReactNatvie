@@ -13,9 +13,19 @@ import {
   View
 } from 'react-native';
 
-// 注意：我們把 useAppContext 拿掉了，因為判斷邏輯交給外層的 OnboardingFlow 處理
-export default function FirstScreen({ onNext, onSkip }) {
-  const [name, setName] = useState('');
+export default function FirstScreen({ onNext, initialName }) { // 👈 接收 initialName
+  const [name, setName] = useState(initialName || ''); // 👈 設定初始值
+
+  const handleNext = () => {
+    Keyboard.dismiss();
+    if (name.trim().length === 0) {
+      // 這裡可以加個簡單提醒，如果沒輸入名字不給過
+      return;
+    }
+    if (onNext) {
+      onNext(name); // 👈 關鍵：把輸入的名字傳給 OnboardFlow
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -26,19 +36,17 @@ export default function FirstScreen({ onNext, onSkip }) {
           contentContainerStyle={styles.innerContainer}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          {/* 頂部區域 */}
           <View>
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBarFill} />
             </View>
 
             <View style={styles.headerContainer}>
-              <Text style={styles.title}>歡迎!</Text>
-              <Text style={styles.subtitle}>發現衣櫃裡的下一件寶貝</Text>
+              <Text style={styles.title}>Welcome!</Text>
+              <Text style={styles.subtitle}>Discover the next merchandise for you</Text>
             </View>
           </View>
 
-          {/* 中間區域 */}
           <View style={styles.centerContent}>
             <Image
               source={require('../../assets/images/amazon.jpg')} 
@@ -47,47 +55,30 @@ export default function FirstScreen({ onNext, onSkip }) {
             />
 
             <View style={styles.inputContainer}>
-              <Text style={styles.askText}>來者何人?!</Text>
+              <Text style={styles.askText}>Who are you?!</Text>
               <TextInput
                 style={styles.textInput}
                 value={name}
                 onChangeText={setName}
-                placeholder="請輸入你的名字"
+                placeholder="Please enter your name"
                 placeholderTextColor="#666"
                 textAlign="center"
                 autoCorrect={false}
                 returnKeyType="done"
-                onSubmitEditing={() => {
-                  Keyboard.dismiss();
-                  if (onNext) onNext();
-                }}
+                onSubmitEditing={handleNext} // 👈 統一邏輯
               />
             </View>
           </View>
 
-          {/* 底部按鈕區塊 */}
           <View style={styles.bottomContainer}>
             <TouchableOpacity 
-              onPress={() => {
-                Keyboard.dismiss();
-                if (onSkip) onSkip();
-              }} 
-              style={styles.skipButton}
-            >
-              <Text style={styles.skipText}>跳過</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              onPress={() => {
-                Keyboard.dismiss();
-                if (onNext) onNext();
-              }} 
-              style={styles.nextButton}
+              onPress={handleNext} // 👈 統一邏輯
+              style={[styles.nextButton, name.trim().length === 0 && { opacity: 0.5 }]}
+              disabled={name.trim().length === 0}
             >
               <Text style={styles.nextButtonText}>下一步</Text>
             </TouchableOpacity>
 
-            {/* 底部小圓點 */}
             <View style={styles.dotsContainer}>
               <View style={[styles.dot, styles.activeDot]} />
               <View style={styles.dot} />
@@ -174,15 +165,6 @@ const styles = StyleSheet.create({
   bottomContainer: {
     alignItems: 'center',
     marginTop: 'auto', 
-  },
-  skipButton: {
-    marginBottom: 15,
-    padding: 10, 
-  },
-  skipText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline', 
   },
   nextButton: {
     backgroundColor: '#7AC1C9',

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store'; // 👈 引入 SecureStore 檢查 Token
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -21,61 +21,62 @@ export function AppProvider({ children }) {
 
   const [categories, setCategories] = useState([]);
   const [isCategoriesLoaded, setIsCategoriesLoaded] = useState(false); 
-  
-  // 🌟 新增：確認 AsyncStorage 本地資料是否讀取完畢
   const [isLocalDataLoaded, setIsLocalDataLoaded] = useState(false);
   
   const [selectedCategoryPaths, setSelectedCategoryPaths] = useState([]); 
   const [reFetch, setReFetch] = useState(false);
 
+  // isFirstLaunch 為 null 時代表還在讀取中，true 顯示 Onboarding，false 顯示主程式
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const [currentOpenList, setCurrentOpenList] = useState('cards');
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
+  // 🌟 修改：核心邏輯 - 檢查 Token 與啟動狀態
   useEffect(() => {
-    const checkFirstLaunch = async () => {
+    const checkAuthStatus = async () => {
       try {
+        // 同時檢查「是否啟動過」以及「是否有 Token」
         const hasLaunched = await AsyncStorage.getItem('@has_launched');
-        if (hasLaunched === null) {
+        const token = await SecureStore.getItemAsync('userToken');
+
+        // 如果沒有啟動過，或者沒有 Token，都視為需要進行 Onboarding
+        if (hasLaunched === null || !token) {
           setIsFirstLaunch(true); 
         } else {
           setIsFirstLaunch(false); 
         }
       } catch (error) {
-        console.error('讀取首次啟動狀態失敗:', error);
-        setIsFirstLaunch(false); 
+        console.error('檢查驗證狀態失敗:', error);
+        setIsFirstLaunch(true); // 發生錯誤時保險起見導向註冊
       }
     };
-    checkFirstLaunch();
+    checkAuthStatus();
   }, []);
 
+  // 🌟 修改：完成註冊流程時呼叫
   const completeFirstLaunch = async () => {
     try {
       await AsyncStorage.setItem('@has_launched', 'true');
+      // 這裡不需要手動存 Token，因為你在 StartThird 已經存過了
+      // 只要把狀態改掉，App.js 就會自動切換畫面
       setIsFirstLaunch(false);
+      console.log('✅ Onboarding 流程正式完成，進入主畫面');
     } catch (error) {
-      console.error('儲存首次啟動狀態失敗:', error);
+      console.error('儲存啟動狀態失敗:', error);
     }
   };
 
+  // --- 原有的 Categories 抓取 ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         if (!API_URL) return;
         const response = await fetch(`${API_URL}/api/firebase/categories/`);
         const json = await response.json();
+        
         setCategories(json);
 
-        if (json && json.length > 0) {
-          const urlsToPrefetch = json
-            .map(brand => getFirstImg(brand.img) || brand.icon)
-            .filter(url => typeof url === 'string');
-
-          if (urlsToPrefetch.length > 0) {
-            Image.prefetch(urlsToPrefetch);
-          }
-        }
       } catch (error) {
         console.error('Fetch categories error:', error);
       } finally {
@@ -87,6 +88,7 @@ export function AppProvider({ children }) {
 
   const CURRENT_DATA_VERSION = '2.1'; 
 
+  // --- 原有的 Local Data 加載 ---
   useEffect(() => {
     const loadLocalData = async () => {
       try {
@@ -108,17 +110,17 @@ export function AppProvider({ children }) {
         const storedPaths = await AsyncStorage.getItem('@selected_category_paths');
         if (storedPaths !== null) {
           setSelectedCategoryPaths(JSON.parse(storedPaths));
-          // 這裡拿掉了 setReFetch(true)，因為等一下 Discover.js 第一次載入時就會自動帶上這個條件發 API 了！
         }
       } catch (error) {
         console.error('讀取本地資料失敗:', error);
       } finally {
-        setIsLocalDataLoaded(true); // 🌟 確保讀取完畢後，發出通行證
+        setIsLocalDataLoaded(true); 
       }
     };
     loadLocalData();
   }, []);
 
+  // --- 下方輔助函式保持不變 ---
   const toggleCategoryPath = (path) => {
     setSelectedCategoryPaths((prev) => {
       let newPaths;
@@ -127,10 +129,8 @@ export function AppProvider({ children }) {
       } else {
         newPaths = [...prev, path]; 
       }
-      
       AsyncStorage.setItem('@selected_category_paths', JSON.stringify(newPaths))
         .catch(error => console.error('儲存篩選條件失敗:', error));
-
       return newPaths;
     });
     setReFetch(true);
@@ -168,7 +168,6 @@ export function AppProvider({ children }) {
   };
 
   const currentList = currentOpenList === 'saved' ? savedItems : cards;
-  
   const openItemIndex = openedItem 
     ? currentList.findIndex(i => getFirstImg(i.img) === getFirstImg(openedItem.img)) 
     : -1;
@@ -191,24 +190,14 @@ export function AppProvider({ children }) {
     try {
       const hasPrompted = await AsyncStorage.getItem('@has_prompted_notification');
       if (hasPrompted === 'true') return; 
-
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      
       if (existingStatus !== 'granted') {
         Alert.alert(
           "開啟通知接收最新資訊", 
           "為了讓您不錯過收藏項目的最新狀態與優惠，請允許我們發送通知給您！", 
           [
-            {
-              text: "晚點再說",
-              style: "cancel",
-              onPress: () => {
-                AsyncStorage.setItem('@has_prompted_notification', 'true');
-              }
-            },
-            {
-              text: "好，開啟通知",
-              onPress: async () => {
+            { text: "晚點再說", style: "cancel", onPress: () => AsyncStorage.setItem('@has_prompted_notification', 'true') },
+            { text: "好，開啟通知", onPress: async () => {
                 await Notifications.requestPermissionsAsync();
                 await AsyncStorage.setItem('@has_prompted_notification', 'true');
               }
@@ -226,36 +215,22 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider
       value={{
-        savedItems,
-        setSavedItems,
-        cards,
-        setCards,
-        currentIndex,
-        setCurrentIndex,
-        openedItem,
-        setOpenedItem,
-        originLayout,
-        setOriginLayout,
-        
-        categories,
-        isCategoriesLoaded,    
-        isLocalDataLoaded, // 🌟 拋出給 index.tsx 使用
-        selectedCategoryPaths, 
-        toggleCategoryPath,    
-        
-        handleSave,
-        handleRemoveSaved,
-        handleOpenItem,
-        handleCloseItem,
-        handleNextItem,
-        handlePrevItem,
-        currentList,
-        openItemIndex,
-        reFetch,
-        setReFetch,
+        savedItems, setSavedItems,
+        cards, setCards,
+        currentIndex, setCurrentIndex,
+        openedItem, setOpenedItem,
+        originLayout, setOriginLayout,
+        categories, isCategoriesLoaded,
+        isLocalDataLoaded,
+        selectedCategoryPaths, toggleCategoryPath,
+        handleSave, handleRemoveSaved,
+        handleOpenItem, handleCloseItem,
+        handleNextItem, handlePrevItem,
+        currentList, openItemIndex,
+        reFetch, setReFetch,
         requestNotificationPermission,
-        isFirstLaunch,        
-        completeFirstLaunch   
+        isFirstLaunch,
+        completeFirstLaunch
       }}
     >
       {children}
