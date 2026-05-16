@@ -412,7 +412,7 @@ if (isLoading) {
         <Reanimated.View style={[StyleSheet.absoluteFill, uiAnimatedStyle, { zIndex: 20 }]} pointerEvents="box-none">
           <View style={styles.headerInteractiveContainer} pointerEvents="box-none">
             <View style={styles.headerRow}>
-              <Text style={styles.savedTitle}>探索</Text>
+              <Text style={styles.savedTitle}>Explore</Text>
             </View>
           </View>
 
@@ -459,7 +459,7 @@ if (isLoading) {
           >
             <View style={styles.buyNowSolidButton}>
               <Text style={styles.buyNowText}>
-                {cards[currentIndex]?.price ? `$${Number(cards[currentIndex].price).toLocaleString()}` : '$169.99'}
+                {cards[currentIndex]?.price ? `$${Number(cards[currentIndex].price).toLocaleString()}` : 'Buy Now'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -485,12 +485,12 @@ const styles = StyleSheet.create({
 
   headerInteractiveContainer: {
     position: 'absolute', top: 0, width: '100%', zIndex: 30, 
-    paddingTop: height * 0.08, paddingHorizontal: 25, backgroundColor: 'rgba(18, 18, 18, 1)', paddingBottom: 41,
+    paddingTop: height * 0.08, paddingHorizontal: 25, backgroundColor: 'rgba(18, 18, 18, 1)', paddingBottom: 10,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', textShadowColor: 'rgba(0, 0, 0, 0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   
-  contentContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', width: '100%', paddingTop: height * 0.18 },
+  contentContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', width: '100%', paddingTop: height * 0.15 },
   paginationContainer: { position: 'absolute', top: height * 0.18 + 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: width * 0.5, alignSelf: 'center', zIndex: 10, gap: 6 },
   paginationDot: { width: 12, height: 4, borderRadius: 2 },
   paginationDotActive: { backgroundColor: 'white' },
@@ -499,17 +499,17 @@ const styles = StyleSheet.create({
   tagWrapper: { marginTop: 12, paddingHorizontal: 15, width: '100%', alignItems: 'center' },
   tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16, textAlign: 'center', textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 
-  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.14, alignSelf: 'center', zIndex: 20 },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
   
   // Share 按鈕
-  fixedShareWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
+  fixedShareWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
   
   // 🌟 INFO 按鈕：回到原本的座標，保留圓形與陰影樣式
   fixedUpWrapper: { 
     position: 'absolute', 
-    bottom: height * 0.18 + buttonSize + spacing, // 🌟 復原到原本的 bottom 位置
+    bottom: height * 0.20 + buttonSize + spacing, // 🌟 復原到原本的 bottom 位置
     right: width * 0.02,                          // 🌟 復原到原本的 right 位置
     zIndex: 20, 
     width: filterButtonSize, 
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   
-  fixedBackWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
+  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
 
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.05, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500', letterSpacing: 0.7 },
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   // 🌟 Filter 按鈕：放置於 INFO 按鈕的正上方
   staticFilterWrapper: {
     position: 'absolute',
-    bottom: (height * 0.18 + buttonSize + spacing) + filterButtonSize + 15, // 🌟 INFO 的位置再往上加
+    bottom: (height * 0.20 + buttonSize + spacing) + filterButtonSize + 15, // 🌟 INFO 的位置再往上加
     right: width * 0.02, // 🌟 跟 INFO 齊平
     zIndex: 90,
   },

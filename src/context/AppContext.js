@@ -193,11 +193,11 @@ export function AppProvider({ children }) {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       if (existingStatus !== 'granted') {
         Alert.alert(
-          "開啟通知接收最新資訊", 
-          "為了讓您不錯過收藏項目的最新狀態與優惠，請允許我們發送通知給您！", 
+          "Enable Notifications for the Latest Updates", 
+          "Please allow notifications so you never miss out on the latest status and offers for your saved items!", 
           [
-            { text: "晚點再說", style: "cancel", onPress: () => AsyncStorage.setItem('@has_prompted_notification', 'true') },
-            { text: "好，開啟通知", onPress: async () => {
+            { text: "Later", style: "cancel", onPress: () => AsyncStorage.setItem('@has_prompted_notification', 'true') },
+            { text: "Enable", onPress: async () => {
                 await Notifications.requestPermissionsAsync();
                 await AsyncStorage.setItem('@has_prompted_notification', 'true');
               }

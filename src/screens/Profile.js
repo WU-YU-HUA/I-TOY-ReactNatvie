@@ -60,75 +60,84 @@ export default function ProfileScreen() {
 
   // 2. 切換通知開關
   const toggleNotification = async (value) => {
-  if (value === true) {
-    // 1. 檢查目前的系統權限狀態
-    const { status } = await Notifications.getPermissionsAsync();
+    if (value === true) {
+      const { status } = await Notifications.getPermissionsAsync();
 
-    if (status !== 'granted') {
-      // 2. 如果沒權限，彈窗詢問是否前往設定
-      Alert.alert(
-        "通知權限未開啟",
-        "為了接收最新資訊，請至手機設定中允許通知。",
-        [
-          {
-            text: "取消",
-            style: "cancel",
-            onPress: () => setIsNotifEnabled(false) // 把開關彈回去
-          },
-          {
-            text: "前往設定",
-            onPress: () => {
-              // 3. 關鍵動作：跳轉到系統設定頁面
-              if (Platform.OS === 'ios') {
-                Linking.openURL('app-settings:'); 
-              } else {
-                Linking.openSettings();
+      if (status !== 'granted') {
+        Alert.alert(
+          "Notifications Disabled",
+          "To receive the latest updates, please enable notifications in your device settings.",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => setIsNotifEnabled(false) 
+            },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:'); 
+                } else {
+                  Linking.openSettings();
+                }
+                setIsNotifEnabled(false); 
               }
-              setIsNotifEnabled(false); // 先彈回去，等使用者回來後再根據權限更新
             }
-          }
-        ]
-      );
-      return;
+          ]
+        );
+        return;
+      }
     }
-  }
 
-  // 如果原本就有權限，或者使用者是想關閉開關
-  setIsNotifEnabled(value);
-  await AsyncStorage.setItem('@has_prompted_notification', value ? 'true' : 'false');
-};
+    setIsNotifEnabled(value);
+    await AsyncStorage.setItem('@has_prompted_notification', value ? 'true' : 'false');
+  };
+
   // 3. 儲存更新 (API & Local)
   const handleSave = async () => {
     setLoading(true);
     try {
-      const API_URL = process.env.EXPO_PUBLIC_BACKEND;
       const token = await SecureStore.getItemAsync('userToken');
 
-      const response = await fetch(`${API_URL}/api/user/update/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: editData.name,
-          gender: editData.gender,
-          birthdate: editData.birthdate
-        })
-      });
-
-      if (response.status === 200) {
-        // 更新成功後，同步更新本地 AsyncStorage
+      // 👈 定義一個共用的更新本地資料函式
+      const updateLocalData = async () => {
         const updatedProfile = { ...profile, ...editData };
         await AsyncStorage.setItem('userProfile', JSON.stringify(updatedProfile));
         setProfile(updatedProfile);
         setIsEditing(false);
-        Alert.alert('成功', '個人資料已更新');
+        Alert.alert('Success', 'Profile updated.');
+      };
+
+      // 👈 判斷：如果有 token 才打 API，沒有的話直接更新本地
+      if (token) {
+        const API_URL = process.env.EXPO_PUBLIC_BACKEND;
+        const response = await fetch(`${API_URL}/api/user/update/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: editData.name,
+            gender: editData.gender,
+            birthdate: editData.birthdate
+          })
+        });
+
+        if (response.status === 200) {
+          await updateLocalData(); // API 成功後更新本地
+        } else {
+          Alert.alert('Fail', 'Update failed, please try again later.');
+        }
       } else {
-        Alert.alert('失敗', '更新失敗，請稍後再試');
+        // 👈 使用者當初選了 Skip，沒有 token，我們只更新本地 AsyncStorage
+        await updateLocalData();
       }
+
     } catch (error) {
-      Alert.alert('錯誤', '無法連接到伺服器');
+      console.error(error);
+      Alert.alert('Error', 'Cannot establish connection to the server.');
     } finally {
       setLoading(false);
     }
@@ -202,7 +211,7 @@ export default function ProfileScreen() {
             <Text style={styles.label}>Birthdate</Text>
             {isEditing ? (
               <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
-                <Text style={{ color: '#000' }}>{editData.birthdate}</Text>
+                <Text style={{ color: '#000' }}>{editData.birthdate || 'Not set'}</Text>
               </TouchableOpacity>
             ) : (
               <Text style={styles.value}>{profile.birthdate}</Text>
@@ -250,7 +259,7 @@ export default function ProfileScreen() {
 
       {showDatePicker && (
         <DateTimePicker
-          value={new Date(editData.birthdate)}
+          value={editData.birthdate ? new Date(editData.birthdate) : new Date(2000, 0, 1)}
           mode="date"
           display="spinner"
           onChange={(event, date) => {
@@ -277,7 +286,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5, 
     borderBottomColor: '#333' 
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  headerTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF' },
   content: { padding: 20 },
   section: { backgroundColor: '#222', borderRadius: 15, padding: 15, marginBottom: 20 },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#7AC1C9', marginBottom: 10 },

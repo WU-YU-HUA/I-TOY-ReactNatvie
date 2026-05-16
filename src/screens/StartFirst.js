@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react'; // 👈 記得引入 useEffect
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -13,18 +13,38 @@ import {
   View
 } from 'react-native';
 
-export default function FirstScreen({ onNext, initialName }) { // 👈 接收 initialName
-  const [name, setName] = useState(initialName || ''); // 👈 設定初始值
+// 👈 建立圖片陣列
+const IMAGES = [
+  require('../../assets/images/1.jpg'),
+  require('../../assets/images/2.jpg'),
+  require('../../assets/images/3.jpg'),
+  require('../../assets/images/4.jpg'),
+  require('../../assets/images/5.jpg'),
+];
+
+export default function FirstScreen({ onNext, initialName }) {
+  const [name, setName] = useState(initialName || '');
+  const [imageIndex, setImageIndex] = useState(0); // 👈 紀錄目前顯示第幾張圖
+
+  // 👈 設定計時器，每 2 秒 (2000 毫秒) 換下一張圖
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setImageIndex((prevIndex) => (prevIndex + 1) % IMAGES.length);
+    }, 3000);
+
+    // 元件卸載時清除計時器，避免記憶體流失
+    return () => clearInterval(timer);
+  }, []);
 
   const handleNext = () => {
     Keyboard.dismiss();
-    if (name.trim().length === 0) {
-      // 這裡可以加個簡單提醒，如果沒輸入名字不給過
-      return;
-    }
-    if (onNext) {
-      onNext(name); // 👈 關鍵：把輸入的名字傳給 OnboardFlow
-    }
+    if (name.trim().length === 0) return;
+    if (onNext) onNext(name);
+  };
+
+  const handleSkip = () => {
+    Keyboard.dismiss();
+    if (onNext) onNext("");
   };
 
   return (
@@ -43,19 +63,21 @@ export default function FirstScreen({ onNext, initialName }) { // 👈 接收 in
 
             <View style={styles.headerContainer}>
               <Text style={styles.title}>Welcome!</Text>
-              <Text style={styles.subtitle}>Discover the next merchandise for you</Text>
+              <Text style={styles.subtitle}>Discover the perfect piece for you</Text>
             </View>
           </View>
 
           <View style={styles.centerContent}>
+            {/* 👈 修改圖片來源，並加上漸變動畫 */}
             <Image
-              source={require('../../assets/images/amazon.jpg')} 
+              source={IMAGES[imageIndex]} 
               style={styles.mainImage}
               contentFit="cover"
+              transition={1000} // 👈 Expo Image 的漸變動畫，500毫秒淡入淡出
             />
 
             <View style={styles.inputContainer}>
-              <Text style={styles.askText}>Who are you?!</Text>
+              <Text style={styles.askText}>What should we call you?</Text>
               <TextInput
                 style={styles.textInput}
                 value={name}
@@ -65,18 +87,23 @@ export default function FirstScreen({ onNext, initialName }) { // 👈 接收 in
                 textAlign="center"
                 autoCorrect={false}
                 returnKeyType="done"
-                onSubmitEditing={handleNext} // 👈 統一邏輯
+                onSubmitEditing={handleNext} 
+                maxLength={75}
               />
             </View>
           </View>
 
           <View style={styles.bottomContainer}>
+            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+              <Text style={styles.skipButtonText}>Skip</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity 
-              onPress={handleNext} // 👈 統一邏輯
+              onPress={handleNext}
               style={[styles.nextButton, name.trim().length === 0 && { opacity: 0.5 }]}
               disabled={name.trim().length === 0}
             >
-              <Text style={styles.nextButtonText}>下一步</Text>
+              <Text style={styles.nextButtonText}>Next</Text>
             </TouchableOpacity>
 
             <View style={styles.dotsContainer}>
@@ -93,109 +120,24 @@ export default function FirstScreen({ onNext, initialName }) { // 👈 接收 in
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#151515', 
-  },
-  innerContainer: {
-    flex: 1,
-    paddingHorizontal: 30,
-    justifyContent: 'space-between', 
-    paddingBottom: 20, 
-  },
-  progressBarContainer: {
-    height: 4,
-    backgroundColor: '#333333',
-    borderRadius: 2,
-    marginTop: 20,
-    width: '60%',
-    alignSelf: 'center',
-  },
-  progressBarFill: {
-    width: '25%', 
-    height: '100%',
-    backgroundColor: '#7AC1C9',
-    borderRadius: 2,
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20, 
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#AAAAAA',
-  },
-  centerContent: {
-    alignItems: 'center',
-    flex: 1, 
-    justifyContent: 'center', 
-  },
-  mainImage: {
-    width: '100%',
-    aspectRatio: 4 / 3, 
-    borderRadius: 20,
-    marginBottom: 30, 
-  },
-  inputContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  askText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 15, 
-  },
-  textInput: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-    width: '80%',
-    paddingVertical: 10,
-    marginBottom: 20, 
-  },
-  bottomContainer: {
-    alignItems: 'center',
-    marginTop: 'auto', 
-  },
-  nextButton: {
-    backgroundColor: '#7AC1C9',
-    width: '100%',
-    paddingVertical: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#7AC1C9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5, 
-  },
-  nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#555555',
-  },
-  activeDot: {
-    backgroundColor: '#FFFFFF',
-  },
+  container: { flex: 1, backgroundColor: '#151515' },
+  innerContainer: { flex: 1, paddingHorizontal: 30, justifyContent: 'space-between', paddingBottom: 20 },
+  progressBarContainer: { height: 4, backgroundColor: '#333333', borderRadius: 2, marginTop: 20, width: '60%', alignSelf: 'center' },
+  progressBarFill: { width: '25%', height: '100%', backgroundColor: '#7AC1C9', borderRadius: 2 },
+  headerContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
+  title: { fontSize: 34, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
+  subtitle: { fontSize: 18, color: '#AAAAAA' },
+  centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20 },
+  inputContainer: { alignItems: 'center', width: '100%', marginTop: 30 },
+  askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },
+  textInput: { color: '#FFFFFF', fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#333333', width: '80%', paddingVertical: 10, marginBottom: 20 },
+  bottomContainer: { alignItems: 'center', marginTop: 'auto' },
+  skipButton: { paddingVertical: 10, marginBottom: 10, alignItems: 'center' },
+  skipButtonText: { color: '#AAAAAA', fontSize: 16, textDecorationLine: 'underline' },
+  nextButton: { backgroundColor: '#7AC1C9', width: '100%', paddingVertical: 15, borderRadius: 25, alignItems: 'center', marginBottom: 20, shadowColor: '#7AC1C9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
+  nextButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  dotsContainer: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#555555' },
+  activeDot: { backgroundColor: '#FFFFFF' },
 });
