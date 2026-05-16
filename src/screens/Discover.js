@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Easing,
   Image,
   Linking,
   Share,
@@ -27,6 +28,7 @@ import Reanimated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import TextTicker from 'react-native-text-ticker';
 
 import CategoryFilterPicker from '../components/FilterButton';
 import { useAppContext } from '../context/AppContext';
@@ -48,7 +50,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
-
+  
   const springConfig = { damping: 25, stiffness: 500, overshootClamping: true };
 
   const pinchGesture = Gesture.Pinch()
@@ -127,6 +129,9 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
         <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
           <Image source={{ uri: currentImageUri }} style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <View 
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]} 
+          />
 
           <View style={styles.contentContainer}>
             {card.img && card.img.length > 1 && (
@@ -141,7 +146,17 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
             
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
-                <Text numberOfLines={1} style={styles.tagText}>{card.tag}</Text>
+                <TextTicker
+                  style={styles.tagText}
+                  duration={10000}         // 👈 跑一圈的時間 (毫秒)，數字越大跑越慢
+                  loop={true}             // 👈 是否無限循環
+                  bounce={false}          // 👈 設為 false 就會像傳統跑馬燈單向循環；設為 true 會左右來回彈跳
+                  repeatSpacer={50}       // 👈 兩段文字首尾相接時的空白距離
+                  marqueeDelay={3000}     // 👈 剛切換到這張卡片時，停頓多久才開始跑
+                  easing={Easing.linear}
+                >
+                  {card.tag}
+                </TextTicker>
               </Reanimated.View>
             )}
           </View>

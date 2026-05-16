@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Easing, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // 👈 新增引入 Easing
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import TextTicker from 'react-native-text-ticker'; // 👈 新增引入 TextTicker
 
-import { Image as ExpoImage } from 'expo-image';
 import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
 const buttonSize = Math.round(width * 0.13);
 const GAP = width * 0.1;
 const spacing = 20;
+const filterButtonSize = Math.round(width * 0.15); 
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const images = Array.isArray(card.img) ? card.img : [card.img];
@@ -88,11 +89,10 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
       }
     });
 
-  // --- 修正：移除 maxPointers(1)，改用 maxDistance 限制來防止縮放誤觸 ---
   const singleTapGesture = Gesture.Tap()
     .numberOfTaps(1)
-    .maxDuration(250) // 限制點擊時間，太慢就不算點擊
-    .maxDistance(15)  // 手指點下去如果移動超過 15 像素，就判定為滑動/縮放，取消點擊
+    .maxDuration(250) 
+    .maxDistance(15)  
     .onEnd((event) => {
       if (scale.value > 1.1) return; 
 
@@ -106,7 +106,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .maxDuration(250)
-    .maxDistance(30) // 雙擊的容許位移稍微給大一點，但一樣能過濾掉雙指縮放
+    .maxDistance(30) 
     .onEnd(() => {
       if (scale.value > 1) {
         scale.value = withSpring(1, springConfig);
@@ -146,9 +146,13 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
               />
               {isActive ? (
                 <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
+                
               ) : (
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 20, 20, 0.95)' }]} />
               )}
+              <View 
+                style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.4)' }]} 
+              />
             </>
           )}
 
@@ -157,23 +161,20 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
               <Image source={{ uri: currentImageUri }} style={styles.cardImage} />
             )}
 
-            {!!card.icon && (
-              <Reanimated.View style={[styles.brandIconWrapper, tagAnimatedStyle]}>
-                <ExpoImage 
-                  source={{ uri: card.icon }} 
-                  style={styles.brandIcon} 
-                  cachePolicy="disk" 
-                  contentFit="cover" 
-                  transition={200}  
-                />
-              </Reanimated.View>
-            )}
-
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
-                <Text numberOfLines={1} style={styles.tagText}>
+                {/* 🌟 只有這裡換成跑馬燈 TextTicker */}
+                <TextTicker
+                  style={styles.tagText}
+                  duration={10000}         
+                  loop={true}             
+                  bounce={false}          
+                  repeatSpacer={50}       
+                  marqueeDelay={3000}     
+                  easing={Easing.linear} 
+                >
                   {card.tag}
-                </Text>
+                </TextTicker>
               </Reanimated.View>
             )}
           </View>
@@ -237,12 +238,12 @@ export default function OpenSaved({
     if (!itemData) return;
     try {
       await Share.share({
-        message: `快來看看這個酷東西：${itemData.tag || '推薦商品'}！\n\n購買連結：${itemData.url}`,
+        message: `Check this out：${itemData.tag || '推薦商品'}！\n\nPurchase Link：${itemData.url}`,
         url: itemData.url,
-        title: itemData.tag || '商品分享'
+        title: itemData.tag || 'Share'
       });
     } catch (error) {
-      console.error('分享發生錯誤:', error.message);
+      console.error('Error:', error.message);
     }
   };
 
@@ -390,7 +391,7 @@ export default function OpenSaved({
           >
 
             <View style={styles.headerInteractiveContainer} pointerEvents="none">
-                <Text style={styles.savedTitle}>收藏</Text>
+                <Text style={styles.savedTitle}>Saved</Text>
                 {!!itemData.brand && (
                 <Text style={styles.categorySubtitle}>
                     {itemData.brand}
@@ -421,10 +422,12 @@ export default function OpenSaved({
 
             <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
+              <Text style={styles.filterCircleText}>Share</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
-              <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+                <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+                <Text style={styles.filterCircleText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
             </TouchableOpacity>
 
             {!!itemData.url && (
@@ -433,7 +436,7 @@ export default function OpenSaved({
                   <Text style={styles.buyNowText}>
                     {itemData.price 
                       ? `$${Number(itemData.price).toLocaleString()}` 
-                      : '馬上購買'}
+                      : 'Buy Now'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -465,7 +468,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 25,
     backgroundColor: 'rgba(18, 18, 18, 1)',
-    paddingBottom: 41,
+    paddingBottom: 10,
+    paddingTop: height * 0.08
   },
   savedTitle: {
     fontSize: 32,
@@ -489,25 +493,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
-    paddingTop: height * 0.18
+    paddingTop: height * 0.15
   },
   cardImage: {
     width: width,
     aspectRatio: 0.8,
     maxHeight: height * 0.7,
     resizeMode: 'flex' 
-  },
-  
-  brandIconWrapper: {
-    position: 'absolute',
-    bottom: height * 0.26, 
-    left: width * 0.03,    
-    zIndex: 10,
-  },
-  brandIcon: {
-    width: width * 0.2,            
-    height: width * 0.2,            
-    borderRadius: width * 0.2 * 0.12,      
   },
 
   tagWrapper: {
@@ -526,36 +518,52 @@ const styles = StyleSheet.create({
     textShadowRadius: 4
   },
 
-  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.12, alignSelf: 'center', zIndex: 20 },
+  fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.14, alignSelf: 'center', zIndex: 20 },
   buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
 
-  fixedBackWrapper: { position: 'absolute', bottom: height * 0.12, left: width * 0.12, zIndex: 20 },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.12, right: width * 0.12, zIndex: 20 },
+  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.12, zIndex: 20 },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.12, zIndex: 20 },
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
 
   fixedShareWrapper: {
     position: 'absolute',
-    bottom: height * 0.18 + (buttonSize + spacing) * 2,
+    bottom: height * 0.2 + (buttonSize + spacing) * 2,
     right: width * 0.02,
     zIndex: 20,
-    width: buttonSize,
-    height: buttonSize,
-    borderRadius: buttonSize / 2,
+    width: filterButtonSize,
+    height: filterButtonSize,
+    borderRadius: filterButtonSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 12, 0.9)'
+    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  fixedUpWrapper: {
-    position: 'absolute',
-    bottom: height * 0.18 + buttonSize + spacing,
+  fixedUpWrapper: { 
+    position: 'absolute', 
+    bottom: height * 0.20 + buttonSize + spacing,
     right: width * 0.02,
-    zIndex: 20,
-    width: buttonSize,
-    height: buttonSize,
-    borderRadius: buttonSize / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(12, 12, 12, 0.9)'
+    zIndex: 20, 
+    width: filterButtonSize, 
+    height: filterButtonSize, 
+    borderRadius: filterButtonSize / 2, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  filterCircleText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: -2,
   },
 });

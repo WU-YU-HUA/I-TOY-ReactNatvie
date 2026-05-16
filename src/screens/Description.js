@@ -53,7 +53,7 @@ export default function DescriptionPanel({ visible, onClose, description }) {
         <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>商品介紹</Text>
+          <Text style={styles.title}>Description</Text>
           <Text style={styles.descriptionText}>
             {description || '尚無商品描述'}
           </Text>
