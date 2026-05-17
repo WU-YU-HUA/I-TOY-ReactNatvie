@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { updateUserData } from '../utilise/UpdateUser'; // 👈 引入共用函式
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -97,49 +97,25 @@ export default function ProfileScreen() {
   // 3. 儲存更新 (API & Local)
   const handleSave = async () => {
     setLoading(true);
-    try {
-      const token = await SecureStore.getItemAsync('userToken');
+    const payload = {
+      name: editData.name,
+      gender: editData.gender,
+      birthdate: editData.birthdate
+    };
 
-      // 👈 定義一個共用的更新本地資料函式
-      const updateLocalData = async () => {
-        const updatedProfile = { ...profile, ...editData };
-        await AsyncStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-        setProfile(updatedProfile);
-        setIsEditing(false);
-        Alert.alert('Success', 'Profile updated.');
-      };
+    // 👈 使用抽出來的共用函式
+    const result = await updateUserData(payload);
 
-      // 👈 判斷：如果有 token 才打 API，沒有的話直接更新本地
-      if (token) {
-        const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-        const response = await fetch(`${API_URL}/api/user/update/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: editData.name,
-            gender: editData.gender,
-            birthdate: editData.birthdate
-          })
-        });
+    setLoading(false);
 
-        if (response.status === 200) {
-          await updateLocalData(); // API 成功後更新本地
-        } else {
-          Alert.alert('Fail', 'Update failed, please try again later.');
-        }
-      } else {
-        // 👈 使用者當初選了 Skip，沒有 token，我們只更新本地 AsyncStorage
-        await updateLocalData();
-      }
-
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Cannot establish connection to the server.');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      // 更新成功後的 UI 狀態處理
+      const updatedProfile = { ...profile, ...payload };
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated.');
+    } else {
+      Alert.alert('Fail', result.message);
     }
   };
 

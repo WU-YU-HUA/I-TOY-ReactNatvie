@@ -1,11 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAppContext } from '../context/AppContext';
-
+import { updateUserData } from '../utilise/UpdateUser'; // 👈 引入共用函式
 // 引入各個步驟畫面
 import FirstScreen from './StartFirst';
 import FourthScreen from './StartFourth';
@@ -76,38 +74,28 @@ export default function OnboardingFlow({ onFinish }) {
 
   const handleFinalSubmit = async (finalData) => {
     setIsSubmitting(true);
-    try {
-      const API_URL = process.env.EXPO_PUBLIC_BACKEND;
-      const url = `${API_URL}/api/user/update/`; 
-      const token = await SecureStore.getItemAsync('userToken');
-      const payload = {
-        name: formData.name,
-        birthdate: finalData.birthdate,      
-        gender: finalData.gender    
-      };
-      const response = await fetch(url, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
+    
+    // 組合要更新的完整資料
+    const payload = {
+      name: formData.name,
+      email: formData.email, // 如果 Onboard 需要 email，一起帶入
+      birthdate: finalData.birthdate,
+      gender: finalData.gender
+    };
 
-      const resData = await response.json(); 
+    // 👈 使用抽出來的共用函式
+    const result = await updateUserData(payload);
 
-      if (response.status === 200) {
-        const userProfile = {
-          name: formData.name, email: formData.email, birthdate: finalData.birthdate, gender: finalData.gender
-        };
-        await AsyncStorage.setItem('userProfile', JSON.stringify(userProfile));
-        if (onFinish) onFinish(); 
-        else completeFirstLaunch(); 
+    setIsSubmitting(false);
+
+    if (result.success) {
+      if (onFinish) {
+        onFinish(); 
       } else {
-        Alert.alert('更新失敗', resData.message || '請稍後再試');
+        completeFirstLaunch(); 
       }
-    } catch (error) {
-      console.error('Submit Error:', error);
-      Alert.alert('錯誤', '資料儲存或連線失敗');
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      Alert.alert('Error', result.message);
     }
   };
 
