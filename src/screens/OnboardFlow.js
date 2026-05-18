@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, View } from 'react-native';
+import { ActivityIndicator, Dimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAppContext } from '../context/AppContext';
@@ -95,7 +95,7 @@ export default function OnboardingFlow({ onFinish }) {
         completeFirstLaunch(); 
       }
     } else {
-      Alert.alert('Error', result.message);
+      // Alert.alert('Error', result.message);
     }
   };
 
