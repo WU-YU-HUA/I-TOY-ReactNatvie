@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react'; // 👈 記得引入 useEffect
+import { useState } from 'react'; // 👈 記得引入 useEffect
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -13,28 +13,8 @@ import {
   View
 } from 'react-native';
 
-// 👈 建立圖片陣列
-const IMAGES = [
-  require('../../assets/images/1.jpg'),
-  require('../../assets/images/2.jpg'),
-  require('../../assets/images/3.jpg'),
-  require('../../assets/images/4.jpg'),
-  require('../../assets/images/5.jpg'),
-];
-
 export default function FirstScreen({ onNext, initialName }) {
   const [name, setName] = useState(initialName || '');
-  const [imageIndex, setImageIndex] = useState(0); // 👈 紀錄目前顯示第幾張圖
-
-  // 👈 設定計時器，每 2 秒 (2000 毫秒) 換下一張圖
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setImageIndex((prevIndex) => (prevIndex + 1) % IMAGES.length);
-    }, 3000);
-
-    // 元件卸載時清除計時器，避免記憶體流失
-    return () => clearInterval(timer);
-  }, []);
 
   const handleNext = () => {
     Keyboard.dismiss();
@@ -70,10 +50,9 @@ export default function FirstScreen({ onNext, initialName }) {
           <View style={styles.centerContent}>
             {/* 👈 修改圖片來源，並加上漸變動畫 */}
             <Image
-              source={IMAGES[imageIndex]} 
+              source={{ uri: "https://m.media-amazon.com/images/I/31CsSv5XJuL._SL500_.jpg" }}
               style={styles.mainImage}
-              contentFit="cover"
-              transition={1000} // 👈 Expo Image 的漸變動畫，500毫秒淡入淡出
+              contentFit="contain"
             />
 
             <View style={styles.inputContainer}>

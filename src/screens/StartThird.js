@@ -98,9 +98,9 @@ export default function ThirdScreen({ email, onNext, onBack }) {
 
             <View style={styles.centerContent}>
               <Image
-                source={require('../../assets/images/7.jpg')} 
+                source={{ uri: 'https://m.media-amazon.com/images/I/419SI1zXJ6L._SL500_.jpg' }}
                 style={styles.mainImage}
-                contentFit="cover"
+                contentFit="contain"
               />
               
               {/* 👈 改成極簡底線置中風格 */}

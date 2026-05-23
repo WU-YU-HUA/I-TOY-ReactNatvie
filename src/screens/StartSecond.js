@@ -82,9 +82,9 @@ export default function SecondScreen({ onNext, onBack, initialEmail }) {
 
             <View style={styles.centerContent}>
               <Image
-                source={require('../../assets/images/6.jpg')} 
+                source={{ uri: 'https://m.media-amazon.com/images/I/3190wEBjpYL._SL500_.jpg' }}
                 style={styles.mainImage}
-                contentFit="cover"
+                contentFit="contain"
               />
 
               {/* 👈 改成跟 StartFirst 一樣的輸入欄結構 */}
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 18, color: '#AAAAAA'},
   centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20, marginBottom: 15 },
+  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20, marginBottom: 15},
   hintText: { color: '#DDDDDD', fontSize: 14, marginBottom: 10 },
   
   // 👈 套用 StartFirst 的輸入欄樣式

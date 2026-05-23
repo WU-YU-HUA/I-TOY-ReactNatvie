@@ -65,9 +65,9 @@ export default function StartFourth({ onSubmit, onBack }) {
 
             <View style={styles.centerContent}>
               <Image
-                source={require('../../assets/images/8.jpg')} 
+                source={{ uri: 'https://m.media-amazon.com/images/I/31UKTZnmCKL._SL500_.jpg' }}
                 style={styles.mainImage}
-                contentFit="cover"
+                contentFit="contain"
               />
               
               <View style={styles.formContainer}>

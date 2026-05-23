@@ -88,14 +88,10 @@ export default function OnboardingFlow({ onFinish }) {
 
     setIsSubmitting(false);
 
-    if (result.success) {
-      if (onFinish) {
-        onFinish(); 
-      } else {
-        completeFirstLaunch(); 
-      }
+    if (onFinish) {
+      onFinish(); 
     } else {
-      // Alert.alert('Error', result.message);
+      completeFirstLaunch(); 
     }
   };
 

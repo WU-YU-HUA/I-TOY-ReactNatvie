@@ -103,19 +103,21 @@ export default function ProfileScreen() {
       birthdate: editData.birthdate
     };
 
-    // 👈 使用抽出來的共用函式
     const result = await updateUserData(payload);
 
     setLoading(false);
 
+    // 🔥 關鍵修改 2：不論 API 成功或失敗，前端畫面都無條件套用新資料！
+    const updatedProfile = { ...profile, ...payload };
+    setProfile(updatedProfile);
+    setIsEditing(false); // 關閉編輯模式
+
     if (result.success) {
-      // 更新成功後的 UI 狀態處理
-      const updatedProfile = { ...profile, ...payload };
-      setProfile(updatedProfile);
-      setIsEditing(false);
-      Alert.alert('Success', 'Profile updated.');
+      // 成功的話可以安靜地過，或者保留 Alert
+      // Alert.alert('Success', 'Profile updated.');
     } else {
-      Alert.alert('Fail', result.message);
+      // 失敗的話，跳出我們剛剛在 update.js 寫的「已暫存於本機」提示
+      Alert.alert('Alert', "Update Local First.");
     }
   };
 
@@ -234,18 +236,35 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {showDatePicker && (
-        <DateTimePicker
-          value={editData.birthdate ? new Date(editData.birthdate) : new Date(2000, 0, 1)}
-          mode="date"
-          display="spinner"
-          onChange={(event, date) => {
-            setShowDatePicker(false);
-            if (date) {
-              const formatted = date.toISOString().split('T')[0];
-              setEditData({...editData, birthdate: formatted});
-            }
-          }}
-        />
+        <View style={styles.datePickerContainer}>
+          {/* 🌟 只有 iOS 需要顯示這個「完成」按鈕 */}
+          {Platform.OS === 'ios' && (
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.datePickerDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          <DateTimePicker
+            value={editData.birthdate ? new Date(editData.birthdate) : new Date(2000, 0, 1)}
+            mode="date"
+            display="spinner"
+            // textColor="#FFFFFF" // 如果你的滾輪字體顏色太暗，可以取消這行的註解強制改白字
+            onChange={(event, date) => {
+              // 🌟 Android 原生視窗按完 OK 後會自動關閉，所以要在這裡同步把 State 設為 false
+              if (Platform.OS === 'android') {
+                setShowDatePicker(false);
+              }
+              
+              // 🌟 iOS 滾動時只更新資料，不關閉視窗
+              if (date) {
+                const formatted = date.toISOString().split('T')[0];
+                setEditData({...editData, birthdate: formatted});
+              }
+            }}
+          />
+        </View>
       )}
     </SafeAreaView>
   );
@@ -281,5 +300,26 @@ const styles = StyleSheet.create({
   btn: { flex: 1, paddingVertical: 15, borderRadius: 30, alignItems: 'center' },
   btnSave: { backgroundColor: '#7AC1C9' },
   btnCancel: { backgroundColor: '#444' },
-  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  // 加入這三個樣式
+  datePickerContainer: {
+    backgroundColor: '#222', 
+    borderRadius: 15,
+    padding: 10,
+    marginTop: 10,
+    marginHorizontal: 20,
+    marginBottom: 20
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#444'
+  },
+  datePickerDoneText: {
+    color: '#7AC1C9',
+    fontSize: 16,
+    fontWeight: 'bold'
+  }
 });
