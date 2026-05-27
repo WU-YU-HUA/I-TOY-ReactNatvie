@@ -86,7 +86,7 @@ export function AppProvider({ children }) {
     fetchCategories();
   }, [API_URL]);
 
-  const CURRENT_DATA_VERSION = '2.1'; 
+  const CURRENT_DATA_VERSION = '2.2'; 
 
   // --- 原有的 Local Data 加載 ---
   useEffect(() => {

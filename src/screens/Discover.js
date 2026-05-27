@@ -148,8 +148,8 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <TextTicker
                   style={styles.tagText}
-                  duration={10000}         // 👈 跑一圈的時間 (毫秒)，數字越大跑越慢
-                  loop={true}             // 👈 是否無限循環
+                  duration={10000}        // 👈 跑一圈的時間 (毫秒)，數字越大跑越慢
+                  loop={true}            // 👈 是否無限循環
                   bounce={false}          // 👈 設為 false 就會像傳統跑馬燈單向循環；設為 true 會左右來回彈跳
                   repeatSpacer={50}       // 👈 兩段文字首尾相接時的空白距離
                   marqueeDelay={3000}     // 👈 剛切換到這張卡片時，停頓多久才開始跑
@@ -214,7 +214,10 @@ export default function DiscoverScreen({ onSave }) {
         tag: item.tag,
         price: item.price,
         description: item.description,
-        category: item.category
+        category: item.category,
+        choice: item.choice,
+        on_sale: item.on_sale,
+        updated: item.updated
       }));
       
       setCards(formData);
@@ -468,17 +471,42 @@ if (isLoading) {
             <AnimatedIonicons name="close" size={width * 0.08} style={xIconStyle} />
           </ReanimatedTouchableOpacity>
 
+          {/* 🌟 新版 Buy Button */}
           <TouchableOpacity
             onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
             style={styles.fixedBuyNowWrapper}
           >
+          {/* 2. 左上角特價標籤 (CSS 立體吊牌版 - 修改後) */}
+          {cards[currentIndex]?.on_sale && (
+            <View style={styles.saleTagContainer}>
+              {/* 標籤長方形本體 (重新排列內容，洞在右邊) */}
+              <View style={styles.saleTagBody}>
+                <Text style={styles.saleTagText}>SALE</Text>
+                {/* 標籤的打洞 */}
+                <View style={styles.saleTagHole} />
+              </View>
+              {/* 標籤右邊的三角形尖角 (移到右邊) */}
+              <View style={styles.saleTagPoint} />
+            </View>
+          )}
+
             <View style={styles.buyNowSolidButton}>
               <Text style={styles.buyNowText}>
                 {cards[currentIndex]?.price ? `$${Number(cards[currentIndex].price).toLocaleString()}` : 'Buy Now'}
               </Text>
+              
+              {/* 1. 價格底下的更新時間 */}
+              {cards[currentIndex]?.price && cards[currentIndex]?.updated && (
+                <Text style={styles.updatedText}>
+                  {cards[currentIndex].updated}
+                </Text>
+              )}
             </View>
           </TouchableOpacity>
-
+          {/* 🌟 獨立放在按鈕下方的 Container */}
+          <View style={styles.fixedAmazonContainer}>
+            <Text style={styles.AmazonText}>Place Amazon Slogan</Text>
+          </View>
         </Reanimated.View>
 
         <DescriptionPanel
@@ -542,8 +570,84 @@ const styles = StyleSheet.create({
   
   fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
 
-  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.05, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
+  // 🌟 修改：加入 alignItems 與 justifyContent 確保文字置中
+  buyNowSolidButton: { 
+    backgroundColor: 'rgb(12, 12, 12)', 
+    paddingHorizontal: width * 0.05, 
+    paddingVertical: height * 0.015, // 稍微微調 padding，預留兩行字體的空間
+    borderRadius: width * 0.09,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500', letterSpacing: 0.7 },
+  
+  // 🌟 新增：更新時間的文字樣式
+  updatedText: {
+    color: '#888888',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  
+  // 🌟 特價標籤外層容器 (加上旋轉與陰影)
+  // 🌟 特價標籤外層容器 (加上正數旋轉與陰影)
+  saleTagContainer: {
+    position: 'absolute',
+    top: -5, // 👈 高度增加，配合傾斜角度
+    left: -30, // 👈 往左移一些，配合傾斜
+    flexDirection: 'row',
+    alignItems: 'center',
+    transform: [{ rotate: '18deg' }], // 👈 正數旋轉，左高右低 (可微調)
+    zIndex: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  // 🌟 修改：縮小並轉向朝右
+  saleTagPoint: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 9, // 👈 縮小三角形， border width 決定尺寸
+    borderTopWidth: 9, // 👈 縮小
+    borderBottomWidth: 9, // 👈 縮小
+    borderLeftColor: '#E62A2A', // 👈 左側上色，三角形朝右
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    // borderRightColor 不設定，預設透明
+  },
+  // 🌟 修改：縮小高度，調整 padding，孔在右邊
+  saleTagBody: {
+    backgroundColor: '#E62A2A',
+    height: 18, // 👈 縮小高度
+    justifyContent: 'center',
+    paddingLeft: 6, // 👈 左 padding 增加，平衡文字
+    paddingRight: 3, // 👈 右 padding 減少，孔在右邊
+    borderTopLeftRadius: 4, // 👈 圓角移到左邊
+    borderBottomLeftRadius: 4, // 👈 圓角移到左邊
+    borderTopRightRadius: 0, // 👈 取消右圓角，接三角形
+    borderBottomRightRadius: 0, // 👈 取消右圓角，接三角形
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // 🌟 修改：縮小並調整位置
+  saleTagHole: {
+    width: 3, // 👈 縮小
+    height: 3, // 👈 縮小
+    backgroundColor: '#FFF',
+    borderRadius: 2, // 👈 縮小圓角
+    marginLeft: 4, // 👈 孔在右，與文字間距
+  },
+  // 🌟 修改：縮小字體
+  saleTagText: {
+    color: '#FFFFFF',
+    fontSize: 8, // 👈 縮小
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+
   errorText: { color: '#888', marginTop: 10, fontSize: 16, marginBottom: 20 },
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
   retryText: { color: 'white', fontWeight: '500' },
@@ -573,5 +677,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: -2,
+  },
+  fixedAmazonContainer: {
+    position: 'absolute',
+    // 👈 這裡很關鍵：拿 Buy Button 的 bottom 減去一個固定數值 (例如減 25)，讓它出現在按鈕正下方
+    bottom: height * 0.14 - 25, 
+    alignSelf: 'center', // 讓它自己水平置中
+    zIndex: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  AmazonText: {
+    color: '#fcfcfc',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
