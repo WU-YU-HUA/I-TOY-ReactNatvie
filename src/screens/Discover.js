@@ -505,7 +505,7 @@ if (isLoading) {
           </TouchableOpacity>
           {/* 🌟 獨立放在按鈕下方的 Container */}
           <View style={styles.fixedAmazonContainer}>
-            <Text style={styles.AmazonText}>Place Amazon Slogan</Text>
+            <Text style={styles.AmazonText}>As an Amazon Associate I earn from qualifying purchases.</Text>
           </View>
         </Reanimated.View>
 
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
   fixedAmazonContainer: {
     position: 'absolute',
     // 👈 這裡很關鍵：拿 Buy Button 的 bottom 減去一個固定數值 (例如減 25)，讓它出現在按鈕正下方
-    bottom: height * 0.14 - 25, 
+    bottom: height * 0.14 - 30, 
     alignSelf: 'center', // 讓它自己水平置中
     zIndex: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
