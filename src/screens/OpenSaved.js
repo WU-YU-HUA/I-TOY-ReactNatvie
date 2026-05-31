@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Dimensions, Easing, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // 👈 新增引入 Easing
+import { Dimensions, Easing, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Reanimated, { interpolate, runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import TextTicker from 'react-native-text-ticker'; // 👈 新增引入 TextTicker
+import TextTicker from 'react-native-text-ticker';
 
 import DescriptionPanel from './Description';
 
@@ -163,11 +163,10 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
 
             {!!card.tag && (
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
-                {/* 🌟 只有這裡換成跑馬燈 TextTicker */}
                 <TextTicker
                   style={styles.tagText}
-                  duration={10000}         
-                  loop={true}             
+                  duration={10000}        
+                  loop={true}            
                   bounce={false}          
                   repeatSpacer={50}       
                   marqueeDelay={3000}     
@@ -433,14 +432,16 @@ export default function OpenSaved({
             {!!itemData.url && (
               <TouchableOpacity onPress={() => Linking.openURL(itemData.url)} style={styles.fixedBuyNowWrapper}>
                 <View style={styles.buyNowSolidButton}>
-                  <Text style={styles.buyNowText}>
-                    {itemData.price 
-                      ? `$${Number(itemData.price).toLocaleString()}` 
-                      : 'Buy Now'}
+                  <Text style={styles.buyNowText}> Buy Now
                   </Text>
                 </View>
               </TouchableOpacity>
             )}
+
+            {/* 🌟 加入了 Amazon 標語的 Container */}
+            <View style={styles.fixedAmazonContainer}>
+              <Text style={styles.AmazonText}>As an Amazon Associate I earn from qualifying purchases.</Text>
+            </View>
 
           </Reanimated.View>
 
@@ -498,8 +499,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: width,
     aspectRatio: 0.8,
-    maxHeight: height * 0.7,
-    resizeMode: 'flex' 
+    resizeMode: 'contain' 
   },
 
   tagWrapper: {
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     borderRadius: filterButtonSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    backgroundColor: 'rgba(51, 51, 51, 1)', 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     borderRadius: filterButtonSize / 2, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    backgroundColor: 'rgba(51, 51, 51, 0.7)', 
+    backgroundColor: 'rgba(51, 51, 51, 1)', 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
@@ -565,5 +565,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     marginTop: -2,
+  },
+
+  // 🌟 加入 Amazon 標語的 CSS，與 Discover.js 完全一致
+  fixedAmazonContainer: {
+    position: 'absolute',
+    bottom: height * 0.14 - 30, 
+    alignSelf: 'center', 
+    zIndex: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  AmazonText: {
+    color: '#fcfcfc',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });

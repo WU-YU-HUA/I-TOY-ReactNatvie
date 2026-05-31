@@ -114,7 +114,7 @@ export default function ProfileScreen() {
 
     if (result.success) {
       // 成功的話可以安靜地過，或者保留 Alert
-      // Alert.alert('Success', 'Profile updated.');
+      Alert.alert('Success', 'Profile updated.');
     } else {
       // 失敗的話，跳出我們剛剛在 update.js 寫的「已暫存於本機」提示
       Alert.alert('Alert', "Update Local First.");
