@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SwipeBuy",
+    "name": "DressDrop",
     "slug": "I-TOY",
     "version": "0.1",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.apparel.digimall",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
