@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react'; // 👈 記得引入 useEffect
+import { useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -10,11 +10,19 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
 } from 'react-native';
 
 export default function FirstScreen({ onNext, initialName }) {
   const [name, setName] = useState(initialName || '');
+
+  // 👈 2. 獲取螢幕寬高
+  const { width, height } = useWindowDimensions();
+  
+  // 👈 3. 動態計算圖片大小：取「螢幕寬的 90%」與「螢幕高的 40%」兩者中較小的值
+  // 這樣確保圖片不管在哪種裝置上，都不會吃掉下方輸入框的空間
+  const imageSize = Math.min(width * 0.9, height * 0.4);
 
   const handleNext = () => {
     Keyboard.dismiss();
@@ -48,10 +56,10 @@ export default function FirstScreen({ onNext, initialName }) {
           </View>
 
           <View style={styles.centerContent}>
-            {/* 👈 修改圖片來源，並加上漸變動畫 */}
             <Image
               source={{ uri: "https://m.media-amazon.com/images/I/31CsSv5XJuL._SL500_.jpg" }}
-              style={styles.mainImage}
+              // 👈 4. 套用動態計算出來的寬高
+              style={[styles.mainImage, { width: imageSize, height: imageSize }]}
               contentFit="contain"
             />
 
@@ -107,7 +115,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 18, color: '#AAAAAA' },
   centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20 },
+  // 👈 5. 移除了原本寫死的 width: '100%' 以及 aspectRatio: 1
+  mainImage: { borderRadius: 20 },
   inputContainer: { alignItems: 'center', width: '100%', marginTop: 30 },
   askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },
   textInput: { color: '#FFFFFF', fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#333333', width: '80%', paddingVertical: 10, marginBottom: 20 },

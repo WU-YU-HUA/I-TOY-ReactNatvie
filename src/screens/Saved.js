@@ -12,9 +12,13 @@ import OpenSaved from './OpenSaved';
 const { width, height } = Dimensions.get('window');
 const COLUMN_GAP = 15;
 const PADDING_HORIZONTAL = 20;
+
+// 🌟 恢復原本固定 3 欄的卡片計算方式
 const CARD_WIDTH = (width - PADDING_HORIZONTAL * 2 - COLUMN_GAP) / 3;
 const RATIO_RADIUS = 0.12;
-const BUTTON_SIZE = Math.round(width * 0.15); // 圓形按鈕大小
+
+// 🌟 保留按鈕的最大尺寸限制 (最大 60px)，維持精緻感
+const BUTTON_SIZE = Math.min(Math.round(width * 0.15), 70); 
 
 const SavedItemCard = ({ item, index, onOpenItem, isSelectMode, isSelected, onToggleSelect, onSetRef }) => {
   const itemRef = useRef(null);
@@ -23,8 +27,8 @@ const SavedItemCard = ({ item, index, onOpenItem, isSelectMode, isSelected, onTo
     if (isSelectMode) {
       onToggleSelect(item);
     } else {
-      itemRef.current?.measure((x, y, width, height, pageX, pageY) => {
-        onOpenItem(item, { x: pageX, y: pageY, width, height }, index);
+      itemRef.current?.measure((x, y, cardW, cardH, pageX, pageY) => {
+        onOpenItem(item, { x: pageX, y: pageY, width: cardW, height: cardH }, index);
       });
     }
   };
@@ -74,12 +78,10 @@ export default function SavedScreen() {
     setSelectedCategoryPaths 
   } = useAppContext();
 
-  // 🌟 核心過濾邏輯：依照 selectedCategoryPaths 過濾 savedItems
   const filteredSavedItems = useMemo(() => {
     if (!selectedCategoryPaths || selectedCategoryPaths.length === 0) {
-      return savedItems; // 如果沒有選擇任何分類，顯示全部
+      return savedItems; 
     }
-    // 假設你的 item 裡面有 category 屬性對應到 Path 字串
     return savedItems.filter(item => selectedCategoryPaths.includes(item.category));
   }, [savedItems, selectedCategoryPaths]);
 
@@ -91,16 +93,13 @@ export default function SavedScreen() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isScrollEnabled, setIsScrollEnabled] = useState(true);
 
-  // --- 分裂按鈕狀態 ---
   const [showMenu, setShowMenu] = useState(false);
   const expandAnim = useSharedValue(0);
   
-  // --- Refs ---
   const isSelectModeRef = useRef(isSelectMode);
   const cardRefs = useRef({});       
   const cardLayouts = useRef({});    
 
-  // 🌟 注意：這裡的 Ref 要改為綁定 filteredSavedItems，這樣拖曳多選的座標與索引才會對齊目前畫面上的卡片
   const savedItemsRef = useRef(filteredSavedItems);
   const selectedItemsRef = useRef(selectedItems);
 
@@ -126,7 +125,6 @@ export default function SavedScreen() {
     if (!isSelectMode) setShowMenu(false);
   }, [isSelectMode]);
 
-  // 🌟 同步過濾後的陣列至 Ref
   useEffect(() => {
     savedItemsRef.current = filteredSavedItems;
   }, [filteredSavedItems]);
@@ -169,9 +167,8 @@ export default function SavedScreen() {
           const node = cardRefs.current[key];
           if (node) {
             node.measure((x, y, w, h, pageX, pageY) => {
-              // 🌟 拖拉選取要以 filteredSavedItems 中的索引為準
               const itemIndex = savedItemsRef.current.findIndex(i => i.img[0] === key);
-              if (itemIndex === -1) return; // 避免已經被過濾掉的卡片觸發
+              if (itemIndex === -1) return; 
 
               cardLayouts.current[key] = { pageX, pageY, w, h, index: itemIndex, img: key };
 
@@ -233,7 +230,6 @@ export default function SavedScreen() {
   const handleLocalOpen = (item, layout, index) => { setOriginLayout(layout); setSelectedIndex(index); setPreviewItem(item); };
   const handleLocalClose = () => { setSelectedIndex(null); setOriginLayout(null); setPreviewItem(null); };
   
-  // 🌟 上一張/下一張 要以 filteredSavedItems 為準
   const handleNext = () => { 
     if (selectedIndex !== null && selectedIndex < filteredSavedItems.length - 1) { 
       setSelectedIndex(selectedIndex + 1); 
@@ -294,7 +290,6 @@ export default function SavedScreen() {
     }
   };
 
-  // 🌟 預覽時如果列表變更（例如取消收藏或改了Filter），重新對齊資料
   useEffect(() => {
     if (selectedIndex !== null && previewItem) {
       const stillExists = filteredSavedItems.find(item => item.img[0] === previewItem.img[0]);
@@ -345,12 +340,11 @@ export default function SavedScreen() {
     zIndex: 8,
   }));
 
-  // 🌟 isCurrentlySaved 維持與完整的 savedItems 比對，確保顯示真實的收藏狀態
   const isCurrentlySaved = previewItem ? savedItems.some(i => i.img[0] === previewItem.img[0]) : false;
-  // 🌟 預覽視窗的上一筆/下一筆，應以 filteredSavedItems 陣列來判斷
   const prevItemData = selectedIndex > 0 ? filteredSavedItems[selectedIndex - 1] : null;
   const nextItemData = selectedIndex !== null && selectedIndex < filteredSavedItems.length - 1 ? filteredSavedItems[selectedIndex + 1] : null;
 
+  // 🌟 恢復為固定 3 欄的 Dummy 計算
   const remainder = filteredSavedItems.length % 3;
   const dummyCount = remainder === 0 ? 0 : 3 - remainder;
 
@@ -361,7 +355,6 @@ export default function SavedScreen() {
           <View style={styles.headerTitleRow}>
             <View>
               <Text style={styles.savedTitle}>Saved</Text>
-              {/* 🌟 數量統計改為過濾後的長度 */}
               <Text style={styles.savedSubtitle}>
                 {isSelectMode ? `Selected ${selectedItems.length} items` : `${filteredSavedItems.length} items saved`}
               </Text>
@@ -376,7 +369,6 @@ export default function SavedScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.gridContainer}>
-          {/* 🌟 使用 filteredSavedItems 進行渲染 */}
           {filteredSavedItems.map((item, index) => (
             <SavedItemCard
               key={item.img[0] + index}
@@ -405,7 +397,7 @@ export default function SavedScreen() {
             onSave={handleSaveFilters} 
             customTrigger={
               <View style={[styles.circleButton, { backgroundColor: 'rgba(51, 51, 51, 0.8)' }]}>
-                <Ionicons name="filter" size={28} color="#FFF" />
+                <Ionicons name="filter" size={BUTTON_SIZE * 0.45} color="#FFF" />
                 <Text style={styles.selectText}>Filter</Text>
               </View>
             }
@@ -440,7 +432,7 @@ export default function SavedScreen() {
               style={[styles.circleButton, { backgroundColor: '#333' }]} 
               onPress={() => setShowMenu(!showMenu)}
             >
-              <Ionicons name="ellipsis-horizontal" size={28} color="#FFF" />
+              <Ionicons name="ellipsis-horizontal" size={BUTTON_SIZE * 0.45} color="#FFF" />
             </TouchableOpacity>
           </Animated.View>
 
@@ -449,7 +441,7 @@ export default function SavedScreen() {
               style={[styles.circleButton, { backgroundColor: '#FF3B30' }]} 
               onPress={toggleSelectMode}
             >
-              <Ionicons name="close" size={32} color="#FFF" />
+              <Ionicons name="close" size={BUTTON_SIZE * 0.55} color="#FFF" />
             </TouchableOpacity>
           </Animated.View>
 
@@ -458,7 +450,7 @@ export default function SavedScreen() {
               style={[styles.circleButton, { backgroundColor: 'rgb(0,255,255)' }]} 
               onPress={toggleSelectMode}
             >
-              <Ionicons name="checkmark-done" size={28} color="#FFF" />
+              <Ionicons name="checkmark-done" size={BUTTON_SIZE * 0.45} color="#FFF" />
               <Text style={styles.selectText}>Select</Text>
             </TouchableOpacity>
           </Animated.View>

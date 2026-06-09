@@ -11,13 +11,21 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
 } from 'react-native';
 
 export default function SecondScreen({ onNext, onBack, initialEmail }) {
   const [inputValue, setInputValue] = useState(initialEmail || '');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 👈 2. 獲取螢幕寬高
+  const { width, height } = useWindowDimensions();
+  
+  // 👈 3. 動態計算圖片大小：取「螢幕寬的 90%」與「螢幕高的 35%」兩者中較小的值
+  // 預留空間給 Email 錯誤訊息以及鍵盤彈出
+  const imageSize = Math.min(width * 0.9, height * 0.35);
 
   const handleNext = async () => {
     setErrorMessage('');
@@ -83,11 +91,11 @@ export default function SecondScreen({ onNext, onBack, initialEmail }) {
             <View style={styles.centerContent}>
               <Image
                 source={{ uri: 'https://m.media-amazon.com/images/I/3190wEBjpYL._SL500_.jpg' }}
-                style={styles.mainImage}
+                // 👈 4. 套用動態計算出來的寬高
+                style={[styles.mainImage, { width: imageSize, height: imageSize }]}
                 contentFit="contain"
               />
 
-              {/* 👈 改成跟 StartFirst 一樣的輸入欄結構 */}
               <View style={styles.inputContainer}>
                 <Text style={styles.askText}>Please enter your email</Text>
                 <TextInput
@@ -144,16 +152,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 18, color: '#AAAAAA'},
   centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20, marginBottom: 15},
+  // 👈 5. 移除了原本寫死的 width: '100%' 以及 aspectRatio: 1
+  mainImage: { borderRadius: 20, marginBottom: 15},
   hintText: { color: '#DDDDDD', fontSize: 14, marginBottom: 10 },
-  
-  // 👈 套用 StartFirst 的輸入欄樣式
   inputContainer: { alignItems: 'center', width: '100%', marginTop: 15 },
   askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },
   textInput: { color: '#FFFFFF', fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#333333', width: '80%', paddingVertical: 10, marginBottom: 10 },
   textInputError: { borderBottomColor: '#FF6B6B' },
   errorText: { color: '#FF6B6B', fontSize: 13, marginBottom: 10, textAlign: 'center' },
-
   bottomContainer: { alignItems: 'center', marginTop: 'auto' },
   skipButton: { paddingVertical: 10, marginBottom: 10, alignItems: 'center' },
   skipButtonText: { color: '#AAAAAA', fontSize: 16, textDecorationLine: 'underline' },

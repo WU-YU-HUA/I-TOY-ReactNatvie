@@ -5,8 +5,8 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert,
+  Dimensions,
   Linking, Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -15,23 +15,22 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { updateUserData } from '../utilise/UpdateUser'; // 👈 引入共用函式
+import { updateUserData } from '../utilise/UpdateUser';
+
+const { height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   
-  // 使用者資料
   const [profile, setProfile] = useState({
     name: '',
     gender: '',
     birthdate: ''
   });
   
-  // 通知狀態
   const [isNotifEnabled, setIsNotifEnabled] = useState(false);
   
-  // 編輯用的暫存 State
   const [editData, setEditData] = useState({ ...profile });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -39,7 +38,6 @@ export default function ProfileScreen() {
     loadInitialData();
   }, []);
 
-  // 1. 載入本地儲存的資料
   const loadInitialData = async () => {
     try {
       const storedProfile = await AsyncStorage.getItem('userProfile');
@@ -58,7 +56,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // 2. 切換通知開關
   const toggleNotification = async (value) => {
     if (value === true) {
       const { status } = await Notifications.getPermissionsAsync();
@@ -94,7 +91,6 @@ export default function ProfileScreen() {
     await AsyncStorage.setItem('@has_prompted_notification', value ? 'true' : 'false');
   };
 
-  // 3. 儲存更新 (API & Local)
   const handleSave = async () => {
     setLoading(true);
     const payload = {
@@ -107,16 +103,13 @@ export default function ProfileScreen() {
 
     setLoading(false);
 
-    // 🔥 關鍵修改 2：不論 API 成功或失敗，前端畫面都無條件套用新資料！
     const updatedProfile = { ...profile, ...payload };
     setProfile(updatedProfile);
-    setIsEditing(false); // 關閉編輯模式
+    setIsEditing(false); 
 
     if (result.success) {
-      // 成功的話可以安靜地過，或者保留 Alert
       Alert.alert('Success', 'Profile updated.');
     } else {
-      // 失敗的話，跳出我們剛剛在 update.js 寫的「已暫存於本機」提示
       Alert.alert('Alert', "Update Local First.");
     }
   };
@@ -130,7 +123,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    // 👈 這裡把 SafeAreaView 改回普通的 View
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
         {!isEditing && (
@@ -141,11 +135,9 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Profile Info Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Information</Text>
           
-          {/* Name Field */}
           <View style={styles.infoRow}>
             <Text style={styles.label}>Name</Text>
             {isEditing ? (
@@ -160,7 +152,6 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* Gender Field */}
           <View style={styles.infoRow}>
             <Text style={styles.label}>Gender</Text>
             {isEditing ? (
@@ -184,7 +175,6 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* Birthdate Field */}
           <View style={styles.infoRow}>
             <Text style={styles.label}>Birthdate</Text>
             {isEditing ? (
@@ -197,7 +187,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Notification Section */}
         <View style={styles.section}>
           <View style={styles.notifRow}>
             <View>
@@ -213,7 +202,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Edit Buttons */}
         {isEditing && (
           <View style={styles.buttonGroup}>
             <TouchableOpacity 
@@ -237,7 +225,6 @@ export default function ProfileScreen() {
 
       {showDatePicker && (
         <View style={styles.datePickerContainer}>
-          {/* 🌟 只有 iOS 需要顯示這個「完成」按鈕 */}
           {Platform.OS === 'ios' && (
             <View style={styles.datePickerHeader}>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
@@ -250,14 +237,11 @@ export default function ProfileScreen() {
             value={editData.birthdate ? new Date(editData.birthdate) : new Date(2000, 0, 1)}
             mode="date"
             display="spinner"
-            // textColor="#FFFFFF" // 如果你的滾輪字體顏色太暗，可以取消這行的註解強制改白字
             onChange={(event, date) => {
-              // 🌟 Android 原生視窗按完 OK 後會自動關閉，所以要在這裡同步把 State 設為 false
               if (Platform.OS === 'android') {
                 setShowDatePicker(false);
               }
               
-              // 🌟 iOS 滾動時只更新資料，不關閉視窗
               if (date) {
                 const formatted = date.toISOString().split('T')[0];
                 setEditData({...editData, birthdate: formatted});
@@ -266,7 +250,7 @@ export default function ProfileScreen() {
           />
         </View>
       )}
-    </SafeAreaView>
+    </View> // 👈 對應原本的 SafeAreaView 結尾
   );
 }
 
@@ -277,7 +261,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    padding: 20, 
+    // 👈 這裡保持和 SavedScreen / Discover 相同的 Padding 設定
+    paddingTop: height * 0.08, 
+    paddingHorizontal: 25, 
+    paddingBottom: 20, 
     borderBottomWidth: 0.5, 
     borderBottomColor: '#333' 
   },
@@ -301,7 +288,6 @@ const styles = StyleSheet.create({
   btnSave: { backgroundColor: '#7AC1C9' },
   btnCancel: { backgroundColor: '#444' },
   btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  // 加入這三個樣式
   datePickerContainer: {
     backgroundColor: '#222', 
     borderRadius: 15,

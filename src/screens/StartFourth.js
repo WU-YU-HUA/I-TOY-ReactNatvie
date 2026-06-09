@@ -12,7 +12,8 @@ import {
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
 } from 'react-native';
 
 export default function StartFourth({ onSubmit, onBack }) {
@@ -20,6 +21,13 @@ export default function StartFourth({ onSubmit, onBack }) {
   const [birthdate, setBirthdate] = useState('2000-01-01'); 
   const [showPicker, setShowPicker] = useState(false); 
   const [gender, setGender] = useState(''); 
+
+  // 👈 2. 獲取螢幕寬高
+  const { width, height } = useWindowDimensions(); 
+  
+  // 👈 3. 動態計算圖片大小：取「螢幕寬的 90%」與「螢幕高的 35%」兩者中較小的值
+  // 這樣在 iPad 較寬的螢幕上，圖片就不會無限放大變成超大正方形
+  const imageSize = Math.min(width * 0.9, height * 0.35);
 
   const onChangeDate = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowPicker(false); 
@@ -66,7 +74,8 @@ export default function StartFourth({ onSubmit, onBack }) {
             <View style={styles.centerContent}>
               <Image
                 source={{ uri: 'https://m.media-amazon.com/images/I/31UKTZnmCKL._SL500_.jpg' }}
-                style={styles.mainImage}
+                // 👈 4. 套用動態計算出來的寬高
+                style={[styles.mainImage, { width: imageSize, height: imageSize }]}
                 contentFit="contain"
               />
               
@@ -82,7 +91,6 @@ export default function StartFourth({ onSubmit, onBack }) {
                   >
                     <View style={styles.inputTextWrapper}>
                       <Text style={styles.inputLabel}>Birthdate yyyy-mm-dd</Text>
-                      {/* 👈 日期文字改為白色 */}
                       <Text style={styles.dateText}>{birthdate}</Text>
                     </View>
                     <Ionicons name="chevron-down" size={20} color="#666" />
@@ -178,27 +186,21 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 14, color: '#AAAAAA' },
   centerContent: { alignItems: 'center', flex: 1, justifyContent: 'flex-start' }, 
-  mainImage: { width: '90%', aspectRatio: 1, borderRadius: 20, marginBottom: 30, marginTop: 10 }, 
+  // 👈 5. 移除了原本寫死的 width: '90%' 以及 aspectRatio: 1
+  mainImage: { borderRadius: 20, marginBottom: 30, marginTop: 10 }, 
   formContainer: { width: '100%', gap: 20}, 
   inputSection: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 5 },
   iconContainer: { width: 40, alignItems: 'center', marginRight: 10 },
-  
-  // 👈 拿掉白底，改成透明底 + 底線 (類似前面的輸入框)
   inputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#333333', paddingHorizontal: 5, paddingVertical: 10 }, 
   inputTextWrapper: { flex: 1 },
   inputLabel: { fontSize: 12, color: '#888888', marginBottom: 4 },
-  // 👈 日期文字改為白色
   dateText: { color: '#FFFFFF', fontSize: 18, fontWeight: '500' }, 
-  
   genderSection: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 5 },
   genderOptions: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   genderButton: { flex: 1, backgroundColor: '#222222', paddingVertical: 12, borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#333333' },
-  // 👈 拿掉選取時的白底，改為透明底 + 主題色框線
   genderButtonActive: { backgroundColor: 'transparent', borderColor: '#7AC1C9' },
   genderButtonText: { color: '#666666', fontSize: 16, fontWeight: '600' },
-  // 👈 選取時的文字改為主題色 (或白色)
   genderTextActive: { color: '#7AC1C9' }, 
-  
   bottomContainer: { alignItems: 'center', marginTop: 'auto' },
   skipButton: { paddingVertical: 10, marginBottom: 10, alignItems: 'center' },
   skipButtonText: { color: '#AAAAAA', fontSize: 16, textDecorationLine: 'underline' },

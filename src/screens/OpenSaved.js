@@ -9,10 +9,16 @@ import TextTicker from 'react-native-text-ticker';
 import DescriptionPanel from './Description';
 
 const { width, height } = Dimensions.get('window');
-const buttonSize = Math.round(width * 0.13);
+
+// 🌟 1. 同步 Discover 的尺寸限制與定位變數
+const buttonSize = Math.min(Math.round(width * 0.13), 60);
+const filterButtonSize = Math.min(Math.round(width * 0.15), 70); 
 const GAP = width * 0.1;
 const spacing = 20;
-const filterButtonSize = Math.round(width * 0.15); 
+
+// 🌟 2. 引入中心對齊策略
+const centerX = width / 2;
+const innerOffset = Math.min(width * 0.25, 120); 
 
 const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive }) => {
   const images = Array.isArray(card.img) ? card.img : [card.img];
@@ -136,7 +142,7 @@ const ZoomableCard = ({ card, setIsZooming, screenAnim, isZoomingAnim, isActive 
   return (
     <View style={styles.card}>
       <GestureDetector gesture={isActive ? composedGesture : Gesture.Tap()}>
-        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
+        <Reanimated.View style={[{ flex: 1, borderRadius: Math.min(width * 0.09, 40), overflow: 'hidden', justifyContent: 'center' }, isActive ? animatedStyle : {}]}>
 
           {!!currentImageUri && (
             <>
@@ -313,7 +319,7 @@ export default function OpenSaved({
       const currentHeight = interpolate(screenAnim.value, [0, 1], [originLayout.height, height]);
       const currentX = interpolate(screenAnim.value, [0, 1], [originLayout.x, 0]);
       const currentY = interpolate(screenAnim.value, [0, 1], [originLayout.y, 0]);
-      const currentRadius = interpolate(screenAnim.value, [0, 1], [12, width * 0.09]);
+      const currentRadius = interpolate(screenAnim.value, [0, 1], [12, Math.min(width * 0.09, 40)]);
 
       return {
         position: 'absolute',
@@ -399,13 +405,13 @@ export default function OpenSaved({
             </View>
 
             <TouchableOpacity style={styles.fixedBackWrapper} onPress={handleClose} activeOpacity={0.7}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)', transform: [{ scale: 1.3 }] }]}>
-                <Ionicons name="chevron-back" size={width * 0.08} color="#FFFFFF" style={{ right: 1 }} />
+              <View style={[styles.iconCircle, { backgroundColor: 'rgba(12, 12, 12, 0.7)' }]}>
+                <Ionicons name="chevron-back" size={buttonSize * 0.6} color="#FFFFFF" style={{ right: 1 }} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.fixedHeartWrapper, { transform: [{ scale: 1.3 }] }]}
+              style={styles.fixedHeartWrapper}
               onPress={handleToggleHeart}
               activeOpacity={0.7}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} 
@@ -413,19 +419,19 @@ export default function OpenSaved({
               <View style={[styles.iconCircle, { backgroundColor: isSavedStatus ? 'rgb(0, 255, 255)' : 'rgba(12, 12, 12, 0.7)' }]}>
                 <Ionicons 
                   name={"heart-outline"} 
-                  size={width * 0.075} 
+                  size={buttonSize * 0.6} 
                   color={isSavedStatus ? "rgb(12,12,12)" : "rgb(0,255,255)"} 
                 />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
-              <Ionicons name="share-social-outline" size={width * 0.08} color="#FFFFFF" />
+              <Ionicons name="share-social-outline" size={filterButtonSize * 0.4} color="#FFF" />
               <Text style={styles.filterCircleText}>Share</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
-                <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+                <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={filterButtonSize * 0.6} color="#FFFFFF" />
                 <Text style={styles.filterCircleText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
             </TouchableOpacity>
 
@@ -438,7 +444,6 @@ export default function OpenSaved({
               </TouchableOpacity>
             )}
 
-            {/* 🌟 加入了 Amazon 標語的 Container */}
             <View style={styles.fixedAmazonContainer}>
               <Text style={styles.AmazonText}>As an Amazon Associate I earn from qualifying purchases.</Text>
             </View>
@@ -458,8 +463,8 @@ export default function OpenSaved({
 
 const styles = StyleSheet.create({
   rootOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 90 },
-  screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: width * 0.09 },
-  card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: width * 0.09 },
+  screenContainer: { backgroundColor: 'rgb(18, 18, 18)', overflow: 'hidden', borderRadius: Math.min(width * 0.09, 40) },
+  card: { width: '100%', height: '100%', backgroundColor: '#2C2C2E', overflow: 'hidden', borderRadius: Math.min(width * 0.09, 40) },
 
   headerInteractiveContainer: {
     position: 'absolute',
@@ -496,11 +501,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: height * 0.15
   },
-  cardImage: {
-    width: width,
-    aspectRatio: 0.8,
-    resizeMode: 'contain' 
-  },
+  
+  // 🌟 取消 aspectRatio，限制高度不超過 55%
+  cardImage: { width: '100%', height: height * 0.55, resizeMode: 'contain' },
 
   tagWrapper: {
     marginTop: 12,
@@ -519,33 +522,21 @@ const styles = StyleSheet.create({
   },
 
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.14, alignSelf: 'center', zIndex: 20 },
-  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: width * 0.1, paddingVertical: height * 0.018, borderRadius: width * 0.09 },
-  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500' },
+  buyNowSolidButton: { backgroundColor: 'rgb(12, 12, 12)', paddingHorizontal: Math.min(width * 0.05, 30), paddingVertical: height * 0.015, borderRadius: Math.min(width * 0.09, 40), alignItems: 'center', justifyContent: 'center' },
+  buyNowText: { color: '#FFFFFF', fontSize: Math.min(Math.max(14, width * 0.045), 20), fontWeight: '500', letterSpacing: 0.7 },
 
-  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.12, zIndex: 20 },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.12, zIndex: 20 },
+  // 🌟 中心對齊：返回 (左內側) 與 愛心 (右內側)
+  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX - innerOffset - (buttonSize / 2), zIndex: 20 },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX + innerOffset - (buttonSize / 2), zIndex: 20 },
+  
+  // 🌟 注意這裡我移除了原本綁定的 { transform: [{ scale: 1.3 }] }
+  // 因為這會讓按鈕不受 Math.min(..., 60) 限制再度膨脹。現在大小由 buttonSize 精準控制。
   iconCircle: { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
 
-  fixedShareWrapper: {
-    position: 'absolute',
-    bottom: height * 0.2 + (buttonSize + spacing) * 2,
-    right: width * 0.02,
-    zIndex: 20,
-    width: filterButtonSize,
-    height: filterButtonSize,
-    borderRadius: filterButtonSize / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(51, 51, 51, 1)', 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 6,
-    elevation: 8,
-  },
+  // 🌟 INFO 按鈕定在螢幕底部 32%
   fixedUpWrapper: { 
     position: 'absolute', 
-    bottom: height * 0.20 + buttonSize + spacing,
+    bottom: height * 0.32,
     right: width * 0.02,
     zIndex: 20, 
     width: filterButtonSize, 
@@ -560,6 +551,25 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
+  
+  // 🌟 Share 按鈕疊加在 INFO 按鈕上方
+  fixedShareWrapper: {
+    position: 'absolute',
+    bottom: height * 0.32 + filterButtonSize + 15,
+    right: width * 0.02,
+    zIndex: 20,
+    width: filterButtonSize,
+    height: filterButtonSize,
+    borderRadius: filterButtonSize / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(51, 51, 51, 1)', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   filterCircleText: {
     color: '#FFF',
     fontSize: 10,
@@ -567,7 +577,6 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
 
-  // 🌟 加入 Amazon 標語的 CSS，與 Discover.js 完全一致
   fixedAmazonContainer: {
     position: 'absolute',
     bottom: height * 0.14 - 30, 

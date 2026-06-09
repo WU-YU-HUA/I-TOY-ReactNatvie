@@ -13,13 +13,20 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
+  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
 } from 'react-native';
 
 export default function ThirdScreen({ email, onNext, onBack }) {
   const [otpValue, setOtpValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 👈 2. 獲取螢幕寬高
+  const { width, height } = useWindowDimensions();
+  
+  // 👈 3. 動態計算圖片大小：限制最大高度為 35%，保留空間給錯誤訊息、重發按鈕與鍵盤
+  const imageSize = Math.min(width * 0.9, height * 0.35);
 
   const handleNext = async () => {
     if (otpValue.length !== 6) return;
@@ -99,11 +106,11 @@ export default function ThirdScreen({ email, onNext, onBack }) {
             <View style={styles.centerContent}>
               <Image
                 source={{ uri: 'https://m.media-amazon.com/images/I/419SI1zXJ6L._SL500_.jpg' }}
-                style={styles.mainImage}
+                // 👈 4. 套用動態計算出來的寬高
+                style={[styles.mainImage, { width: imageSize, height: imageSize }]}
                 contentFit="contain"
               />
               
-              {/* 👈 改成極簡底線置中風格 */}
               <View style={styles.inputContainer}>
                 <Text style={styles.askText}>Please enter 6-digit code</Text>
                 <TextInput
@@ -161,18 +168,15 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10, textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#AAAAAA', textAlign: 'center' },
   centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 20, marginBottom: 15 },
-  
-  // 👈 套用極簡輸入框樣式
+  // 👈 5. 移除了原本寫死的 width: '100%' 以及 aspectRatio: 1
+  mainImage: { borderRadius: 20, marginBottom: 15 },
   inputContainer: { alignItems: 'center', width: '100%', marginTop: 15 },
   askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },
-  textInput: { color: '#FFFFFF', fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#333333', width: '80%', paddingVertical: 10, marginBottom: 10, letterSpacing: 3 }, // 加一點 letterSpacing 讓數字分開比較好看
+  textInput: { color: '#FFFFFF', fontSize: 18, borderBottomWidth: 1, borderBottomColor: '#333333', width: '80%', paddingVertical: 10, marginBottom: 10, letterSpacing: 3 },
   textInputError: { borderBottomColor: '#FF6B6B' },
   errorText: { color: '#FF6B6B', fontSize: 13, marginBottom: 10, textAlign: 'center' },
-
   resendButton: { marginTop: 10, alignItems: 'center' },
   resendText: { color: '#7AC1C9', fontSize: 14, textDecorationLine: 'underline' },
-  
   bottomContainer: { alignItems: 'center', marginTop: 'auto' },
   skipButton: { paddingVertical: 10, marginBottom: 10, alignItems: 'center' },
   skipButtonText: { color: '#AAAAAA', fontSize: 16, textDecorationLine: 'underline' },

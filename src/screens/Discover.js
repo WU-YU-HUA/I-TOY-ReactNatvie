@@ -36,10 +36,17 @@ import { useAppContext } from '../context/AppContext';
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
-const buttonSize = Math.round(width * 0.13); 
-const filterButtonSize = Math.round(width * 0.15); // 🌟 Filter 與 INFO 圓形按鈕的大小
-const trendingButtonSize = Math.round(width * 0.16); 
+// 🌟 限制最大尺寸
+const buttonSize = Math.min(Math.round(width * 0.13), 60); 
+const filterButtonSize = Math.min(Math.round(width * 0.15), 70); 
+const trendingButtonSize = Math.min(Math.round(width * 0.16), 75); 
 const spacing = 20;
+
+// 🌟 以畫面中心點為基準，計算四個按鈕的絕對偏移量
+const centerX = width / 2;
+const innerOffset = Math.min(width * 0.25, 120); 
+// 🌟 iPad 防重疊：外側按鈕最大距離加寬到 200
+const outerOffset = Math.min(width * 0.42, 200); 
 
 const ReanimatedTouchableOpacity = Reanimated.createAnimatedComponent(TouchableOpacity);
 const AnimatedIonicons = Reanimated.createAnimatedComponent(Ionicons);
@@ -126,7 +133,7 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
   return (
     <View style={styles.card}>
       <GestureDetector gesture={composedGesture}>
-        <Reanimated.View style={[{ flex: 1, borderRadius: width * 0.09, overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
+        <Reanimated.View style={[{ flex: 1, borderRadius: Math.min(width * 0.09, 40), overflow: 'hidden', justifyContent: 'center' }, animatedStyle]}>
           <Image source={{ uri: currentImageUri }} style={[StyleSheet.absoluteFillObject, { resizeMode: 'cover' }]} />
           <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
           <View 
@@ -148,11 +155,11 @@ const ZoomableCard = ({ card, setIsZooming, isZoomingAnim, onDoubleTap }) => {
               <Reanimated.View style={[styles.tagWrapper, tagAnimatedStyle]}>
                 <TextTicker
                   style={styles.tagText}
-                  duration={10000}        // 👈 跑一圈的時間 (毫秒)，數字越大跑越慢
-                  loop={true}            // 👈 是否無限循環
-                  bounce={false}          // 👈 設為 false 就會像傳統跑馬燈單向循環；設為 true 會左右來回彈跳
-                  repeatSpacer={50}       // 👈 兩段文字首尾相接時的空白距離
-                  marqueeDelay={3000}     // 👈 剛切換到這張卡片時，停頓多久才開始跑
+                  duration={10000}        
+                  loop={true}            
+                  bounce={false}          
+                  repeatSpacer={50}       
+                  marqueeDelay={3000}     
                   easing={Easing.linear}
                 >
                   {card.tag}
@@ -178,7 +185,7 @@ export default function DiscoverScreen({ onSave }) {
     categories,
     selectedCategoryPaths,
     toggleCategoryPath,
-    setSelectedCategoryPaths // 🌟 建議在 AppContext 導出這個可以直接替換陣列的方法
+    setSelectedCategoryPaths 
   } = useAppContext();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -231,18 +238,13 @@ export default function DiscoverScreen({ onSave }) {
   };
 
   const handleSaveFilters = (newPaths) => {
-    // 1. 更新全域選中的路徑
     if (setSelectedCategoryPaths) {
       setSelectedCategoryPaths(newPaths);
     } else if (toggleCategoryPath) {
-      // 兼容舊版 toggle 邏輯
       const toAdd = newPaths.filter(p => !selectedCategoryPaths.includes(p));
       const toRemove = selectedCategoryPaths.filter(p => !newPaths.includes(p));
       [...toAdd, ...toRemove].forEach(path => toggleCategoryPath(path));
     }
-
-    // 2. 觸發重新抓取資料
-    // 因為選取條件變了，我們需要重置索引並讓頁面重新 fetchData
     setCurrentIndex(0);
     setReFetch(true); 
   };
@@ -357,7 +359,6 @@ if (isLoading) {
     );
   }
 
-  // 無資料或瀏覽完畢時的畫面
   if (!cards || currentIndex >= cards.length || isSwipedAll) {
     return (
       <View style={[styles.screenContainer, styles.center]}>
@@ -368,12 +369,11 @@ if (isLoading) {
           <Ionicons name="refresh" size={width * 0.045} color="white" style={{ marginLeft: 5 }} />
         </TouchableOpacity>
 
-        {/* 🌟 無資料畫面也顯示 Filter 按鈕 */}
         <View style={styles.staticFilterWrapper}>
           <CategoryFilterPicker 
             data={categories} 
             selectedPaths={selectedCategoryPaths} 
-            onSave={handleSaveFilters} // 👈 改用 handleSaveFilters
+            onSave={handleSaveFilters} 
             customTrigger={
               <View style={styles.filterCircleButton}>
                 <Ionicons name="filter" size={28} color="#FFF" />
@@ -435,28 +435,26 @@ if (isLoading) {
           </View>
 
           <ReanimatedTouchableOpacity style={[styles.fixedHeartWrapper, heartButtonStyle]} onPress={handlePressHeart}>
-            <AnimatedIonicons name="heart-outline" size={width * 0.08} style={heartIconStyle} />
+            <AnimatedIonicons name="heart-outline" size={buttonSize * 0.6} style={heartIconStyle} />
           </ReanimatedTouchableOpacity>
 
           <TouchableOpacity style={styles.fixedShareWrapper} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={width * 0.08} color="#00ff77" />
+            <Ionicons name="share-social-outline" size={buttonSize * 0.6} color="#00ff77" />
           </TouchableOpacity>
 
-          {/* INFO 按鈕 */}
           <TouchableOpacity style={styles.fixedUpWrapper} onPress={() => setIsDescVisible(!isDescVisible)}>
-              <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={width * 0.08} color="#FFFFFF" />
+              <Ionicons name={isDescVisible ? 'chevron-down' : 'chevron-up'} size={filterButtonSize * 0.6} color="#FFFFFF" />
               <Text style={styles.filterCircleText}>{isDescVisible ? 'CLOSE' : 'INFO'}</Text>
           </TouchableOpacity>
 
-          {/* 🌟 Filter 按鈕 */}
           <View style={styles.staticFilterWrapper}>
             <CategoryFilterPicker 
               data={categories} 
               selectedPaths={selectedCategoryPaths} 
-              onSave={handleSaveFilters} // 👈 這裡同步更新
+              onSave={handleSaveFilters}
               customTrigger={
                 <View style={styles.filterCircleButton}>
-                  <Ionicons name="filter" size={28} color="#FFF" />
+                  <Ionicons name="filter" size={filterButtonSize * 0.4} color="#FFF" />
                   <Text style={styles.filterCircleText}>Filter</Text>
                 </View>
               }
@@ -464,28 +462,23 @@ if (isLoading) {
           </View>
 
           <TouchableOpacity style={[styles.fixedBackWrapper, { transform: [{ scaleX: -1 }] }]} onPress={handleGoBack}>
-              <Ionicons name="refresh-outline" size={width * 0.07} color="#ffe100"/>
+              <Ionicons name="refresh-outline" size={buttonSize * 0.5} color="#ffe100"/>
           </TouchableOpacity>
 
           <ReanimatedTouchableOpacity style={[styles.fixedCloseWrapper, xButtonStyle]} onPress={handlePressCross}>
-            <AnimatedIonicons name="close" size={width * 0.08} style={xIconStyle} />
+            <AnimatedIonicons name="close" size={buttonSize * 0.6} style={xIconStyle} />
           </ReanimatedTouchableOpacity>
 
-          {/* 🌟 新版 Buy Button */}
           <TouchableOpacity
             onPress={() => cards[currentIndex] && Linking.openURL(cards[currentIndex].url)}
             style={styles.fixedBuyNowWrapper}
           >
-          {/* 2. 左上角特價標籤 (CSS 立體吊牌版 - 修改後) */}
           {cards[currentIndex]?.on_sale && (
             <View style={styles.saleTagContainer}>
-              {/* 標籤長方形本體 (重新排列內容，洞在右邊) */}
               <View style={styles.saleTagBody}>
                 <Text style={styles.saleTagText}>SALE</Text>
-                {/* 標籤的打洞 */}
                 <View style={styles.saleTagHole} />
               </View>
-              {/* 標籤右邊的三角形尖角 (移到右邊) */}
               <View style={styles.saleTagPoint} />
             </View>
           )}
@@ -495,7 +488,6 @@ if (isLoading) {
                 {cards[currentIndex]?.price ? `$${Number(cards[currentIndex].price).toLocaleString()}` : 'Buy Now'}
               </Text>
               
-              {/* 1. 價格底下的更新時間 */}
               {cards[currentIndex]?.price && cards[currentIndex]?.updated && (
                 <Text style={styles.updatedText}>
                   {cards[currentIndex].updated}
@@ -503,7 +495,6 @@ if (isLoading) {
               )}
             </View>
           </TouchableOpacity>
-          {/* 🌟 獨立放在按鈕下方的 Container */}
           <View style={styles.fixedAmazonContainer}>
             <Text style={styles.AmazonText}>As an Amazon Associate I earn from qualifying purchases.</Text>
           </View>
@@ -524,7 +515,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   swiperContainer: { flex: 1, zIndex: 1 },
   swiperRoot: { backgroundColor: 'transparent' },
-  card: { width: width, height: height, backgroundColor: '#2C2C2E', borderRadius: width * 0.09, overflow: 'hidden' },
+  card: { width: width, height: height, backgroundColor: '#2C2C2E', borderRadius: Math.min(width * 0.09, 40), overflow: 'hidden' },
 
   headerInteractiveContainer: {
     position: 'absolute', top: 0, width: '100%', zIndex: 30, 
@@ -534,26 +525,28 @@ const styles = StyleSheet.create({
   savedTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFF', textShadowColor: 'rgba(0, 0, 0, 0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   
   contentContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', width: '100%', paddingTop: height * 0.15 },
-  paginationContainer: { position: 'absolute', top: height * 0.18 + 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: width * 0.5, alignSelf: 'center', zIndex: 10, gap: 6 },
+  paginationContainer: { position: 'absolute', top: height * 0.18 + 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: Math.min(width * 0.5, 200), alignSelf: 'center', zIndex: 10, gap: 6 },
   paginationDot: { width: 12, height: 4, borderRadius: 2 },
   paginationDotActive: { backgroundColor: 'white' },
   paginationDotInactive: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  cardImage: { width: width, aspectRatio: 0.8, resizeMode: 'contain' },
+  
+  cardImage: { width: '100%', height: height * 0.55, resizeMode: 'contain' },
   tagWrapper: { marginTop: 12, paddingHorizontal: 15, width: '100%', alignItems: 'center' },
   tagText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16, textAlign: 'center', textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
 
   fixedBuyNowWrapper: { position: 'absolute', bottom: height * 0.14, alignSelf: 'center', zIndex: 20 },
-  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
-  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.19, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
   
-  // Share 按鈕
-  fixedShareWrapper: { position: 'absolute', bottom: height * 0.14, right: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
+  fixedCloseWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX - innerOffset - (buttonSize / 2), zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
+  fixedHeartWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX + innerOffset - (buttonSize / 2), zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center' },
   
-  // 🌟 INFO 按鈕：回到原本的座標，保留圓形與陰影樣式
+  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX - outerOffset - (buttonSize / 2), zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
+  fixedShareWrapper: { position: 'absolute', bottom: height * 0.14, left: centerX + outerOffset - (buttonSize / 2), zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
+  
+  // 🌟 INFO 按鈕：定在螢幕底部 32% 高度處 (確保在圖片下方 padding 的空間裡)
   fixedUpWrapper: { 
     position: 'absolute', 
-    bottom: height * 0.20 + buttonSize + spacing, // 🌟 復原到原本的 bottom 位置
-    right: width * 0.02,                          // 🌟 復原到原本的 right 位置
+    bottom: height * 0.32, 
+    right: width * 0.02, 
     zIndex: 20, 
     width: filterButtonSize, 
     height: filterButtonSize, 
@@ -567,36 +560,30 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
-  
-  fixedBackWrapper: { position: 'absolute', bottom: height * 0.14, left: width * 0.02, zIndex: 20, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(12, 12, 12, 0.9)' },
 
-  // 🌟 修改：加入 alignItems 與 justifyContent 確保文字置中
   buyNowSolidButton: { 
     backgroundColor: 'rgb(12, 12, 12)', 
-    paddingHorizontal: width * 0.05, 
-    paddingVertical: height * 0.015, // 稍微微調 padding，預留兩行字體的空間
-    borderRadius: width * 0.09,
+    paddingHorizontal: Math.min(width * 0.05, 30), 
+    paddingVertical: height * 0.015, 
+    borderRadius: Math.min(width * 0.09, 40),
     alignItems: 'center',
     justifyContent: 'center'
   },
-  buyNowText: { color: '#FFFFFF', fontSize: Math.max(14, width * 0.045), fontWeight: '500', letterSpacing: 0.7 },
+  buyNowText: { color: '#FFFFFF', fontSize: Math.min(Math.max(14, width * 0.045), 20), fontWeight: '500', letterSpacing: 0.7 },
   
-  // 🌟 新增：更新時間的文字樣式
   updatedText: {
     color: '#888888',
     fontSize: 10,
     marginTop: 2,
   },
   
-  // 🌟 特價標籤外層容器 (加上旋轉與陰影)
-  // 🌟 特價標籤外層容器 (加上正數旋轉與陰影)
   saleTagContainer: {
     position: 'absolute',
-    top: -5, // 👈 高度增加，配合傾斜角度
-    left: -30, // 👈 往左移一些，配合傾斜
+    top: -5,
+    left: -30, 
     flexDirection: 'row',
     alignItems: 'center',
-    transform: [{ rotate: '18deg' }], // 👈 正數旋轉，左高右低 (可微調)
+    transform: [{ rotate: '18deg' }],
     zIndex: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -604,46 +591,41 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
-  // 🌟 修改：縮小並轉向朝右
   saleTagPoint: {
     width: 0,
     height: 0,
     backgroundColor: 'transparent',
     borderStyle: 'solid',
-    borderLeftWidth: 9, // 👈 縮小三角形， border width 決定尺寸
-    borderTopWidth: 9, // 👈 縮小
-    borderBottomWidth: 9, // 👈 縮小
-    borderLeftColor: '#E62A2A', // 👈 左側上色，三角形朝右
+    borderLeftWidth: 9, 
+    borderTopWidth: 9, 
+    borderBottomWidth: 9, 
+    borderLeftColor: '#E62A2A', 
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    // borderRightColor 不設定，預設透明
   },
-  // 🌟 修改：縮小高度，調整 padding，孔在右邊
   saleTagBody: {
     backgroundColor: '#E62A2A',
-    height: 18, // 👈 縮小高度
+    height: 18, 
     justifyContent: 'center',
-    paddingLeft: 6, // 👈 左 padding 增加，平衡文字
-    paddingRight: 3, // 👈 右 padding 減少，孔在右邊
-    borderTopLeftRadius: 4, // 👈 圓角移到左邊
-    borderBottomLeftRadius: 4, // 👈 圓角移到左邊
-    borderTopRightRadius: 0, // 👈 取消右圓角，接三角形
-    borderBottomRightRadius: 0, // 👈 取消右圓角，接三角形
+    paddingLeft: 6, 
+    paddingRight: 3, 
+    borderTopLeftRadius: 4, 
+    borderBottomLeftRadius: 4, 
+    borderTopRightRadius: 0, 
+    borderBottomRightRadius: 0, 
     flexDirection: 'row',
     alignItems: 'center',
   },
-  // 🌟 修改：縮小並調整位置
   saleTagHole: {
-    width: 3, // 👈 縮小
-    height: 3, // 👈 縮小
+    width: 3, 
+    height: 3, 
     backgroundColor: '#FFF',
-    borderRadius: 2, // 👈 縮小圓角
-    marginLeft: 4, // 👈 孔在右，與文字間距
+    borderRadius: 2, 
+    marginLeft: 4, 
   },
-  // 🌟 修改：縮小字體
   saleTagText: {
     color: '#FFFFFF',
-    fontSize: 8, // 👈 縮小
+    fontSize: 8, 
     fontWeight: 'bold',
     letterSpacing: 1,
   },
@@ -652,11 +634,11 @@ const styles = StyleSheet.create({
   retryButton: { flexDirection: 'row', backgroundColor: '#333', padding: 12, borderRadius: 20, alignItems: 'center' },
   retryText: { color: 'white', fontWeight: '500' },
 
-  // 🌟 Filter 按鈕：放置於 INFO 按鈕的正上方
+  // 🌟 Filter 按鈕：疊加在 INFO 的上方
   staticFilterWrapper: {
     position: 'absolute',
-    bottom: (height * 0.20 + buttonSize + spacing) + filterButtonSize + 15, // 🌟 INFO 的位置再往上加
-    right: width * 0.02, // 🌟 跟 INFO 齊平
+    bottom: height * 0.32 + filterButtonSize + 15, 
+    right: width * 0.02, 
     zIndex: 90,
   },
   filterCircleButton: {
@@ -680,9 +662,8 @@ const styles = StyleSheet.create({
   },
   fixedAmazonContainer: {
     position: 'absolute',
-    // 👈 這裡很關鍵：拿 Buy Button 的 bottom 減去一個固定數值 (例如減 25)，讓它出現在按鈕正下方
     bottom: height * 0.14 - 30, 
-    alignSelf: 'center', // 讓它自己水平置中
+    alignSelf: 'center', 
     zIndex: 20,
     paddingHorizontal: 12,
     paddingVertical: 4,
