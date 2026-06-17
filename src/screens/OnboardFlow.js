@@ -12,7 +12,7 @@ import ThirdScreen from './StartThird';
 
 const { width } = Dimensions.get('window'); 
 
-export default function OnboardingFlow({ onFinish }) {
+export default function OnboardingFlow({ onFinish=None }) {
   const { completeFirstLaunch } = useAppContext(); 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);

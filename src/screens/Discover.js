@@ -662,12 +662,13 @@ const styles = StyleSheet.create({
   },
   fixedAmazonContainer: {
     position: 'absolute',
-    bottom: height * 0.14 - 30, 
+    bottom: height * 0.14 + 60, 
     alignSelf: 'center', 
     zIndex: 20,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   AmazonText: {
     color: '#fcfcfc',

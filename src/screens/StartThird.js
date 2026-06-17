@@ -8,13 +8,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
+  TouchableWithoutFeedback, // 👈 新增引入 ScrollView
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 export default function ThirdScreen({ email, onNext, onBack }) {
@@ -22,11 +23,10 @@ export default function ThirdScreen({ email, onNext, onBack }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // 👈 2. 獲取螢幕寬高
   const { width, height } = useWindowDimensions();
   
-  // 👈 3. 動態計算圖片大小：限制最大高度為 35%，保留空間給錯誤訊息、重發按鈕與鍵盤
-  const imageSize = Math.min(width * 0.9, height * 0.35);
+  // 👈 加上第三個參數 250
+  const imageSize = Math.min(width * 0.9, height * 0.35, 250);
 
   const handleNext = async () => {
     if (otpValue.length !== 6) return;
@@ -103,10 +103,15 @@ export default function ThirdScreen({ email, onNext, onBack }) {
               </View>
             </View>
 
-            <View style={styles.centerContent}>
+            {/* 👈 改用 ScrollView 包覆 */}
+            <ScrollView 
+              style={{ flex: 1, width: '100%' }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <Image
                 source={{ uri: 'https://m.media-amazon.com/images/I/419SI1zXJ6L._SL500_.jpg' }}
-                // 👈 4. 套用動態計算出來的寬高
                 style={[styles.mainImage, { width: imageSize, height: imageSize }]}
                 contentFit="contain"
               />
@@ -133,7 +138,7 @@ export default function ThirdScreen({ email, onNext, onBack }) {
                   <Text style={styles.resendText}>Didn't receive code? Resend</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
 
             <View style={styles.bottomContainer}>
               <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
@@ -167,8 +172,6 @@ const styles = StyleSheet.create({
   headerContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10, textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#AAAAAA', textAlign: 'center' },
-  centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  // 👈 5. 移除了原本寫死的 width: '100%' 以及 aspectRatio: 1
   mainImage: { borderRadius: 20, marginBottom: 15 },
   inputContainer: { alignItems: 'center', width: '100%', marginTop: 15 },
   askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },

@@ -5,24 +5,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
+  TouchableWithoutFeedback, // 👈 新增引入 ScrollView
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 export default function FirstScreen({ onNext, initialName }) {
   const [name, setName] = useState(initialName || '');
 
-  // 👈 2. 獲取螢幕寬高
   const { width, height } = useWindowDimensions();
   
-  // 👈 3. 動態計算圖片大小：取「螢幕寬的 90%」與「螢幕高的 40%」兩者中較小的值
-  // 這樣確保圖片不管在哪種裝置上，都不會吃掉下方輸入框的空間
-  const imageSize = Math.min(width * 0.9, height * 0.4);
+  // 👈 加上第三個參數 250，鎖死圖片最大高度
+  const imageSize = Math.min(width * 0.9, height * 0.4, 250);
 
   const handleNext = () => {
     Keyboard.dismiss();
@@ -55,10 +54,15 @@ export default function FirstScreen({ onNext, initialName }) {
             </View>
           </View>
 
-          <View style={styles.centerContent}>
+          {/* 👈 把 View 改成 ScrollView，並加上防呆屬性 */}
+          <ScrollView 
+            style={{ flex: 1, width: '100%' }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <Image
               source={{ uri: "https://m.media-amazon.com/images/I/31CsSv5XJuL._SL500_.jpg" }}
-              // 👈 4. 套用動態計算出來的寬高
               style={[styles.mainImage, { width: imageSize, height: imageSize }]}
               contentFit="contain"
             />
@@ -78,7 +82,7 @@ export default function FirstScreen({ onNext, initialName }) {
                 maxLength={75}
               />
             </View>
-          </View>
+          </ScrollView>
 
           <View style={styles.bottomContainer}>
             <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
@@ -114,8 +118,6 @@ const styles = StyleSheet.create({
   headerContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   title: { fontSize: 34, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 18, color: '#AAAAAA' },
-  centerContent: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  // 👈 5. 移除了原本寫死的 width: '100%' 以及 aspectRatio: 1
   mainImage: { borderRadius: 20 },
   inputContainer: { alignItems: 'center', width: '100%', marginTop: 30 },
   askText: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 15 },

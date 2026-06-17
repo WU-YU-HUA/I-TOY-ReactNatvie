@@ -8,12 +8,13 @@ import {
   Modal,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-  useWindowDimensions // 👈 1. 引入動態獲取螢幕尺寸的 Hook
+  TouchableWithoutFeedback, // 👈 新增引入 ScrollView
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 export default function StartFourth({ onSubmit, onBack }) {
@@ -22,12 +23,10 @@ export default function StartFourth({ onSubmit, onBack }) {
   const [showPicker, setShowPicker] = useState(false); 
   const [gender, setGender] = useState(''); 
 
-  // 👈 2. 獲取螢幕寬高
   const { width, height } = useWindowDimensions(); 
   
-  // 👈 3. 動態計算圖片大小：取「螢幕寬的 90%」與「螢幕高的 35%」兩者中較小的值
-  // 這樣在 iPad 較寬的螢幕上，圖片就不會無限放大變成超大正方形
-  const imageSize = Math.min(width * 0.9, height * 0.35);
+  // 👈 第四頁選項較多，圖片極限鎖死在 220 比較保險
+  const imageSize = Math.min(width * 0.9, height * 0.35, 220);
 
   const onChangeDate = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowPicker(false); 
@@ -71,10 +70,15 @@ export default function StartFourth({ onSubmit, onBack }) {
               </View>
             </View>
 
-            <View style={styles.centerContent}>
+            {/* 👈 改用 ScrollView 包覆，對齊方式維持 flex-start */}
+            <ScrollView 
+              style={{ flex: 1, width: '100%' }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center' }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <Image
                 source={{ uri: 'https://m.media-amazon.com/images/I/31UKTZnmCKL._SL500_.jpg' }}
-                // 👈 4. 套用動態計算出來的寬高
                 style={[styles.mainImage, { width: imageSize, height: imageSize }]}
                 contentFit="contain"
               />
@@ -123,7 +127,7 @@ export default function StartFourth({ onSubmit, onBack }) {
                   </View>
                 </View>
               </View>
-            </View>
+            </ScrollView>
 
             <View style={styles.bottomContainer}>
               <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
@@ -185,8 +189,6 @@ const styles = StyleSheet.create({
   headerContainer: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 10 },
   subtitle: { fontSize: 14, color: '#AAAAAA' },
-  centerContent: { alignItems: 'center', flex: 1, justifyContent: 'flex-start' }, 
-  // 👈 5. 移除了原本寫死的 width: '90%' 以及 aspectRatio: 1
   mainImage: { borderRadius: 20, marginBottom: 30, marginTop: 10 }, 
   formContainer: { width: '100%', gap: 20}, 
   inputSection: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 5 },
