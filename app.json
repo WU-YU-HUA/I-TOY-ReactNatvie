@@ -11,9 +11,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.apparel.digimall",
-      "buildNumber": "22",
+      "buildNumber": "23",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": true
       }
     },
     "android": {
