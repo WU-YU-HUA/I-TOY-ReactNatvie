@@ -1,4 +1,4 @@
-# Welcome to DressDrop (I-TOY) 👋
+# Welcome to DressDrop
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
@@ -40,7 +40,7 @@ Change build number
 
 DressDrop (I-TOY) is an apparel discovery and saving app developed using React Native and Expo. Its core concept is to provide a Tinder-like card swiping experience, allowing users to easily discover, filter, and save their favorite clothing brands and items.
 
-## 🌟 Key Features
+## Key Features
 
 - **Swipeable Cards**: On the "Discover" page, users can intuitively swipe left or right to like or skip items, with support for double-tap and zoom gestures.
 - **Category & Filtering**: Provides a comprehensive brand list and gender categorization (Men's/Women's), allowing users to quickly find items they are interested in.
@@ -48,7 +48,7 @@ DressDrop (I-TOY) is an apparel discovery and saving app developed using React N
 - **Seamless Detail View**: Clicking on an item smoothly expands it to a full-screen view, supporting rich gestures like pinch-to-zoom, swipe-down to close, and left-right navigation.
 - **Global State Management**: Uniformly manages backend data fetching, user preferences, and saved lists via the React Context API.
 
-## 📂 Architecture & Data Flow
+## Architecture & Data Flow
 
 This project uses Expo Router for routing management and strictly separates the "Routing Layer" and "UI Logic Layer" to ensure clean and highly reusable code.
 
@@ -71,7 +71,7 @@ Uses `.js` files to implement actual screens and interaction logic:
   - **`Saved.js`**: Presents saved items in a grid.
   - **`OpenSaved.js`**: Full-screen item detail view, supporting rich gestures and animations.
 
-### 🔄 Overall Data Flow
+### Overall Data Flow
 
 1. **[Initialization] `AppContext.js`**: When the app starts, it fetches item category data from the backend and reads user preferences and saved items locally.
 2. **[Page Entry]**: Expo Router enters `app/(tabs)/index.tsx`, retrieves data from `AppContext`, and passes it to `src/screens/Discover.js`.
