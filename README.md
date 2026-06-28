@@ -79,7 +79,7 @@ Uses `.js` files to implement actual screens and interaction logic:
 4. **[State Synchronization]**: After the state updates, `Saved.js` re-renders immediately to show the latest saved items.
 5. **[Global Detail View]**: Clicking a saved card triggers `handleOpenItem`, and `<GlobalUIWrapper>` immediately renders `OpenSaved.js` on top, displaying a seamless zoom animation.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Framework**: React Native, Expo
 - **Routing**: Expo Router
