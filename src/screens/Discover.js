@@ -495,9 +495,9 @@ if (isLoading) {
               )}
             </View>
           </TouchableOpacity>
-          <View style={styles.fixedAmazonContainer}>
+          {/* <View style={styles.fixedAmazonContainer}>
             <Text style={styles.AmazonText}>As an Amazon Associate I earn from qualifying purchases.</Text>
-          </View>
+          </View> */}
         </Reanimated.View>
 
         <DescriptionPanel

@@ -202,6 +202,13 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* 👈 新增的 Amazon 聲明區塊 */}
+        <View style={styles.section}>
+          <Text style={styles.disclaimerText}>
+            As an Amazon Associate I earn from qualifying purchases.
+          </Text>
+        </View>
+
         {isEditing && (
           <View style={styles.buttonGroup}>
             <TouchableOpacity 
@@ -288,6 +295,8 @@ const styles = StyleSheet.create({
   btnSave: { backgroundColor: '#7AC1C9' },
   btnCancel: { backgroundColor: '#444' },
   btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  // 👈 新增的 disclaimerText 樣式
+  disclaimerText: { fontSize: 12, color: '#666', textAlign: 'center', fontStyle: 'italic' },
   datePickerContainer: {
     backgroundColor: '#222', 
     borderRadius: 15,
@@ -307,5 +316,5 @@ const styles = StyleSheet.create({
     color: '#7AC1C9',
     fontSize: 16,
     fontWeight: 'bold'
-  }
+  },
 });

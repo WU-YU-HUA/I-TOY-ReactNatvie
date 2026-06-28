@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store'; // 👈 引入 SecureStore 檢查 Token
+// 如果你其他地方沒有用到 SecureStore，可以把這行註解或刪掉
+// import * as SecureStore from 'expo-secure-store'; 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -32,16 +33,16 @@ export function AppProvider({ children }) {
 
   const API_URL = process.env.EXPO_PUBLIC_BACKEND;
 
-  // 🌟 修改：核心邏輯 - 檢查 Token 與啟動狀態
+  // 🌟 修改：核心邏輯 - 改為檢查 userProfile
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // 同時檢查「是否啟動過」以及「是否有 Token」
+        // 同時檢查「是否啟動過」以及「是否有 userProfile 資料」
         const hasLaunched = await AsyncStorage.getItem('@has_launched');
-        const token = await SecureStore.getItemAsync('userToken');
+        const userProfile = await AsyncStorage.getItem('userProfile'); // 👈 改為檢查 userProfile
 
-        // 如果沒有啟動過，或者沒有 Token，都視為需要進行 Onboarding
-        if (hasLaunched === null || !token) {
+        // 如果沒有啟動過，或者沒有 userProfile，都視為需要進行 Onboarding
+        if (hasLaunched === null || !userProfile) {
           setIsFirstLaunch(true); 
         } else {
           setIsFirstLaunch(false); 
@@ -58,8 +59,6 @@ export function AppProvider({ children }) {
   const completeFirstLaunch = async () => {
     try {
       await AsyncStorage.setItem('@has_launched', 'true');
-      // 這裡不需要手動存 Token，因為你在 StartThird 已經存過了
-      // 只要把狀態改掉，App.js 就會自動切換畫面
       setIsFirstLaunch(false);
       console.log('✅ Onboarding 流程正式完成，進入主畫面');
     } catch (error) {

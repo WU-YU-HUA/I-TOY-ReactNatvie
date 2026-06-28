@@ -3,7 +3,6 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { AppProvider, useAppContext } from '../../src/context/AppContext';
-// 1. 確保這行取消註解，路徑指向你的 OnboardingFlow 組件
 import OnboardingFlow from '../../src/screens/OnboardFlow';
 
 function TabLayoutContent() {
